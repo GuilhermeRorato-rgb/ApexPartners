@@ -1,0 +1,2957 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agente ComDinheiro — Apex Partners</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    /* ── Apex Partners Brand Tokens ── */
+    :root {
+      --apex-navy:   #0D2161;   /* primary — deep navy                  */
+      --apex-blue:   #2279C7;   /* accent  — logo square / buttons       */
+      --apex-blue-dark: #1660a8;/* button hover                          */
+      --apex-bg:     #f0f2f6;   /* page background                       */
+      --apex-text:   #0D2161;   /* headings                              */
+      --apex-muted:  #5a6880;   /* body / secondary text                 */
+      --apex-border: #dde2ec;   /* borders                               */
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--apex-bg);
+      min-height: 100vh;
+      color: var(--apex-text);
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--apex-navy);
+      color: white;
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(13,33,97,0.35);
+      border-bottom: 3px solid var(--apex-blue);
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-wordmark {
+      display: flex;
+      flex-direction: column;
+      line-height: 1;
+    }
+    .header-wordmark span:first-child {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: white;
+    }
+    .header-right {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Main layout ── */
+    main {
+      max-width: 900px;
+      margin: 44px auto;
+      padding: 0 24px 80px;
+    }
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--apex-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 18px;
+    }
+
+    /* ── Cards ── */
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 28px 28px 24px;
+      box-shadow: 0 1px 3px rgba(13,33,97,0.07), 0 4px 16px rgba(13,33,97,0.07);
+      border: 1.5px solid var(--apex-border);
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      position: relative;
+    }
+    .card.active { cursor: pointer; }
+    .card.active:hover {
+      border-color: var(--apex-blue);
+      box-shadow: 0 1px 3px rgba(13,33,97,0.08), 0 8px 32px rgba(34,121,199,0.18);
+      transform: translateY(-2px);
+    }
+    .card.active:hover .card-icon {
+      background: var(--apex-navy);
+      color: white;
+    }
+    .card.disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .coming-soon-badge {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: #e8f0fc;
+      color: var(--apex-blue);
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding: 3px 9px;
+      border-radius: 100px;
+    }
+
+    .card-icon {
+      width: 46px; height: 46px;
+      background: #e8f0fc;
+      color: var(--apex-navy);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      margin-bottom: 16px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .card h2 {
+      font-size: 0.97rem;
+      font-weight: 700;
+      color: var(--apex-navy);
+      margin-bottom: 8px;
+    }
+    .card p {
+      font-size: 0.83rem;
+      color: var(--apex-muted);
+      line-height: 1.55;
+    }
+
+    .card-drop-hint {
+      margin-top: 20px;
+      border: 1.5px dashed var(--apex-border);
+      border-radius: 8px;
+      padding: 11px;
+      text-align: center;
+      font-size: 0.77rem;
+      color: #9aacbf;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .card.active:hover .card-drop-hint {
+      border-color: var(--apex-blue);
+      color: var(--apex-blue);
+    }
+
+    /* ── Modal ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(13,33,97,0.52);
+      backdrop-filter: blur(5px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .overlay.visible { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: white;
+      border-radius: 14px;
+      padding: 36px 40px 32px;
+      width: 430px; max-width: 92vw;
+      box-shadow: 0 24px 64px rgba(13,33,97,0.3);
+      transform: translateY(18px);
+      transition: transform 0.25s;
+      border-top: 4px solid var(--apex-blue);
+    }
+    .overlay.visible .modal { transform: translateY(0); }
+
+    .modal-step {
+      font-size: 0.68rem; font-weight: 700;
+      color: var(--apex-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    .modal h3 {
+      font-size: 1.15rem; font-weight: 700;
+      color: var(--apex-navy); margin-bottom: 6px;
+    }
+    .modal .modal-desc { font-size: 0.84rem; color: var(--apex-muted); margin-bottom: 24px; }
+    .modal-file-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #eef3fb; border: 1px solid #c6d9f1;
+      border-radius: 5px; padding: 4px 10px;
+      font-size: 0.78rem; color: var(--apex-navy);
+      font-weight: 500; margin-bottom: 16px;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .modal-file-tag .file-icon { flex-shrink: 0; }
+
+    .modal label {
+      display: block;
+      font-size: 0.79rem; font-weight: 600;
+      color: var(--apex-navy); margin-bottom: 7px;
+    }
+    .modal input[type="text"],
+    .modal input[type="date"] {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--apex-border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: var(--apex-navy);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 22px;
+      font-family: inherit;
+    }
+    .modal input:focus {
+      border-color: var(--apex-blue);
+      box-shadow: 0 0 0 3px rgba(34,121,199,0.12);
+    }
+
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn {
+      padding: 10px 24px;
+      border: none; border-radius: 8px;
+      font-size: 0.87rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-primary {
+      background: var(--apex-blue);
+      color: white;
+      box-shadow: 0 2px 8px rgba(34,121,199,0.35);
+    }
+    .btn-primary:hover {
+      background: var(--apex-blue-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(34,121,199,0.4);
+    }
+    .btn-secondary {
+      background: #e8f0fc;
+      color: var(--apex-navy);
+    }
+    .btn-secondary:hover { background: #d6e4f7; }
+
+    /* ── Loading overlay ── */
+    #loadingOverlay {
+      position: fixed; inset: 0;
+      background: rgba(13,33,97,0.58);
+      backdrop-filter: blur(5px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+      display: none;
+    }
+    #loadingOverlay.visible { display: flex; }
+    .loader-box {
+      background: white;
+      border-radius: 14px;
+      padding: 40px 52px;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(13,33,97,0.3);
+      border-top: 4px solid var(--apex-blue);
+    }
+    .spinner {
+      width: 46px; height: 46px;
+      border: 4px solid #e8f0fc;
+      border-top-color: var(--apex-blue);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 18px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-box p { font-size: 0.95rem; color: var(--apex-navy); font-weight: 600; }
+    .loader-box small { font-size: 0.77rem; color: var(--apex-muted); margin-top: 5px; display: block; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--apex-navy);
+      color: white;
+      padding: 12px 26px;
+      border-radius: 8px;
+      font-size: 0.87rem;
+      box-shadow: 0 4px 24px rgba(13,33,97,0.35);
+      transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.3s;
+      opacity: 0;
+      white-space: nowrap;
+      z-index: 300;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.error   { background: #b91c1c; }
+    #toast.success { background: #15653a; }
+
+    /* ── Relatório de Movimentação ── */
+    .modal-relatorio { width: 520px; max-height: 80vh; overflow-y: auto; }
+    .relatorio-resumo {
+      font-size: 0.82rem; color: var(--apex-muted);
+      margin-bottom: 18px; margin-top: -8px;
+    }
+    .relatorio-lista { list-style: none; margin: 0 0 24px; display: flex; flex-direction: column; gap: 10px; }
+    .relatorio-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 14px; border-radius: 8px;
+      font-size: 0.84rem; line-height: 1.5;
+    }
+    .relatorio-item.ok      { background: #d1fae5; color: #065f46; }
+    .relatorio-item.warning { background: #fef3c7; color: #78350f; border-left: 3px solid #f59e0b; }
+    .relatorio-item-icon { flex-shrink: 0; font-size: 17px; margin-top: 1px; }
+
+    /* ── Banner de aviso ── */
+    .aviso-banner {
+      background: #fff1f1;
+      border: 1.5px solid #e53e3e;
+      color: #c53030;
+      font-weight: 700;
+      font-size: 0.88rem;
+      text-align: center;
+      padding: 11px 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      letter-spacing: 0.01em;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">
+    <!-- Apex diamond logo (SVG inline) -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 42 42" aria-label="Apex logo icon">
+      <rect width="42" height="42" rx="5" fill="#2279C7"/>
+      <rect x="10.5" y="10.5" width="21" height="21" rx="1.5" fill="white" transform="rotate(45 21 21)"/>
+    </svg>
+    <div class="header-wordmark">
+      <span>Apex Partners</span>
+    </div>
+  </div>
+  <span class="header-right">apexpartners.com.br</span>
+</header>
+
+<main>
+  <p class="section-title">Importação de Dados</p>
+  <div class="aviso-banner">⚠ IMPORTANTE — REMOVER ABA "Capa" DO EXTRATO BTG ANTES DE IMPORTAR</div>
+  <div class="cards">
+
+    <!-- Card 1: Importar Posição -->
+    <div class="card active" id="cardPosicao">
+      <div class="card-icon">📥</div>
+      <h2>Importar Posição</h2>
+      <p>Novo cliente - importar posição inicial</p>
+      <div class="card-drop-hint">Clique para selecionar o arquivo de extrato (.xlsx)</div>
+    </div>
+
+    <!-- Card 2: Importar Movimentações -->
+    <div class="card active" id="cardMovimentacao">
+      <div class="card-icon">🔄</div>
+      <h2>Importar movimentações</h2>
+      <p>Atualizar carteira - importar movimentações</p>
+      <div class="card-drop-hint">Clique para selecionar o arquivo de extrato (.xlsx)</div>
+    </div>
+  </div>
+</main>
+
+<!-- Hidden file inputs -->
+<input type="file" id="fileInput"    accept=".xlsx" multiple style="display:none">
+<input type="file" id="fileInputMov" accept=".xlsx" multiple style="display:none">
+
+<!-- ── Modal 1: Nome da Carteira ── -->
+<div class="overlay" id="modalOverlay1">
+  <div class="modal">
+    <div class="modal-step" id="modal1Step">Arquivo 1 de 1 — Passo 1 de 2</div>
+    <div class="modal-file-tag" id="modal1FileTag"><span class="file-icon">📄</span><span id="modal1FileName"></span></div>
+    <h3>Nome da Carteira</h3>
+    <p class="modal-desc">Informe o identificador da carteira (ex: <strong>JMG_teste</strong>)</p>
+    <label for="inputPortfolio">Nome da carteira</label>
+    <input type="text" id="inputPortfolio" placeholder="Ex: JMG_teste" autocomplete="off">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnCancelar1">Cancelar</button>
+      <button class="btn btn-primary" id="btnContinuar1">Continuar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal 2: Data de Referência ── -->
+<div class="overlay" id="modalOverlay2">
+  <div class="modal">
+    <div class="modal-step" id="modal2Step">Arquivo 1 de 1 — Passo 2 de 2</div>
+    <div class="modal-file-tag" id="modal2FileTag"><span class="file-icon">📄</span><span id="modal2FileName"></span></div>
+    <h3>Data de Referência</h3>
+    <p class="modal-desc">Informe a data da posição (data do extrato)</p>
+    <label for="inputData">Data de referência</label>
+    <input type="date" id="inputData">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnVoltar2">← Voltar</button>
+      <button class="btn btn-primary" id="btnProcessar2">Próximo →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Relatório de Movimentação ── -->
+<div class="overlay" id="modalRelatorio">
+  <div class="modal modal-relatorio">
+    <div class="modal-step">Resultado</div>
+    <h3>Relatório de Importação</h3>
+    <p id="relatorioResumo" class="relatorio-resumo"></p>
+    <ul id="relatorioLista" class="relatorio-lista"></ul>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btnFecharRelatorio">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Movimentação: Nome da Carteira ── -->
+<div class="overlay" id="modalOverlayMov">
+  <div class="modal">
+    <div class="modal-step" id="modalMovStep">Arquivo 1 de 1</div>
+    <div class="modal-file-tag" id="modalMovFileTag"><span class="file-icon">📄</span><span id="modalMovFileName"></span></div>
+    <h3>Nome da Carteira</h3>
+    <p class="modal-desc">Informe o identificador da carteira (ex: <strong>JMG_teste</strong>)</p>
+    <label for="inputPortfolioMov">Nome da carteira</label>
+    <input type="text" id="inputPortfolioMov" placeholder="Ex: JMG_teste" autocomplete="off">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnCancelarMov">Cancelar</button>
+      <button class="btn btn-primary"   id="btnProcessarMov">Processar ⚡</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Loading Overlay ── -->
+<div id="loadingOverlay">
+  <div class="loader-box">
+    <div class="spinner"></div>
+    <p id="loadingText">Processando extrato…</p>
+    <small>Aguarde, isso pode levar alguns segundos</small>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CONSTANTES
+// ═══════════════════════════════════════════════════════════════════════════
+
+const HEADERS = [
+  "nome_portfolio", "ativo", "tipo_ativo", "data_operacao", "id", "id2",
+  "CV", "data_cotizacao", "data_liquidacao", "preco_unitario", "quantidade",
+  "total_bruto", "alt_caixa", "data_vencimento", "custo_transacao",
+  "flag_tribut", "marcacao", "indexador", "percent", "taxa_pre", "gross_up",
+  "taxa_cupom_pre", "instituicao_financeira", "banco", "flag_liquidez",
+  "tempo_liquidez", "data_liquidez", "apelido"
+];
+
+// Índices 0-based (col letra - 1)
+const COL = {
+  nome_portfolio:          0,  // A
+  ativo:                   1,  // B
+  tipo_ativo:              2,  // C
+  data_operacao:           3,  // D
+  CV:                      6,  // G
+  data_cotizacao:          7,  // H
+  data_liquidacao:         8,  // I
+  preco_unitario:          9,  // J
+  quantidade:             10,  // K
+  total_bruto:            11,  // L
+  alt_caixa:              12,  // M
+  data_vencimento:        13,  // N
+  custo_transacao:        14,  // O
+  flag_tribut:            15,  // P
+  marcacao:               16,  // Q
+  indexador:              17,  // R
+  percent:                18,  // S
+  taxa_pre:               19,  // T
+  gross_up:               20,  // U
+  taxa_cupom_pre:         21,  // V
+  instituicao_financeira: 22,  // W
+  banco:                  23,  // X
+  flag_liquidez:          24,  // Y
+  tempo_liquidez:         25,  // Z
+  apelido:                27,  // AB
+};
+
+const BANCO_NORMALIZE = {
+  "BANCO BTG PACTUAL S A":         "BTG Pactual",
+  "BANCO BTG PACTUAL S.A.":        "BTG Pactual",
+  "BTG PACTUAL":                   "BTG Pactual",
+  "CAIXA ECONOMICA FEDERAL":       "Caixa Economica Federal",
+  "ITAU UNIBANCO S.A.":            "Itau Unibanco",
+  "ITAU UNIBANCO SA":              "Itau Unibanco",
+  "BANCO BRADESCO S.A.":           "Bradesco",
+  "BANCO BRADESCO SA":             "Bradesco",
+  "BANCO SANTANDER (BRASIL) S.A.": "Santander",
+  "BANCO INTER S.A.":              "Banco Inter",
+  "XP INVESTIMENTOS CCTVM S.A.":   "XP Investimentos",
+  "BANCO SAFRA S.A.":              "Safra",
+  "BTG COMMODITIES":               "BTG Pactual",
+  "BTG COMMODITIES 2A SERIE":      "BTG Pactual",
+  "ECTP":                          "BTG Pactual",
+  "ENGELHART":                     "BTG Pactual",
+  "ENGELHART CTP":                 "BTG Pactual",
+  "ENGELHART CTP S.A.":            "BTG Pactual",
+  "ENGELHART CTP SA":              "BTG Pactual",
+  "DASA":                          "DASA",
+  "MRV":                           "MRV",
+};
+
+const CRIPTO_MAP = {
+  "XBT BITCOIN (XBT)":  ["MB_BITCOIN",  "Bitcoin"],
+  "XET ETHEREUM (XET)": ["MB_ETHEREUM", "Ethereum"],
+};
+
+const RF_TIPOS_ALVO    = new Set(["LCI", "LCA", "CDB", "LF", "LFSN", "LFSC", "LIG"]);
+const CRA_TIPOS_ALVO   = new Set(["CRA", "CRI", "CDCA"]);
+const DEB_TIPOS_ALVO   = new Set(["DEBENTURE"]);
+const TITULO_TIPOS_ALVO= new Set(["NTNB", "LFT", "LTN", "NTNF"]);
+
+const CNPJ_RE   = /\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/;
+const SUFIXO_RE = /[\s,]+(?:S\.?\s*A\.?|S\/A|LTDA\.?|ME|EIRELI|CIA\.?|EPP)\s*$/i;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  FUNÇÕES UTILITÁRIAS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Lê valor de célula SheetJS (1-indexed row/col). Retorna null se vazia. */
+function cellVal(ws, row, col) {
+  const addr = XLSX.utils.encode_cell({r: row - 1, c: col - 1});
+  const cell = ws[addr];
+  if (!cell) return null;
+  return cell.v != null ? cell.v : null;
+}
+
+/** Número máximo de linhas na worksheet (1-indexed). */
+function getMaxRow(ws) {
+  if (!ws['!ref']) return 0;
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  return range.e.r + 1;
+}
+
+/**
+ * Lê uma linha de cabeçalho e retorna mapa: nome_normalizado → índice_col (1-based).
+ * Normaliza: minúsculas, sem acentos, sem pontuação extra.
+ */
+function rfHdrMap(ws, r) {
+  const map = {};
+  for (let c = 1; c <= 25; c++) {
+    const v = cellVal(ws, r, c);
+    if (typeof v !== 'string') continue;
+    const key = v.trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+    map[key] = c;
+  }
+  return map;
+}
+
+/** Retorna primeiro índice de coluna cujo nome normalizado bata com um dos nomes fornecidos. */
+function rfCol(hdr, ...names) {
+  for (const name of names) {
+    const k = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+    if (hdr[k] !== undefined) return hdr[k];
+  }
+  return null;
+}
+
+/** Remove acentos e converte para maiúsculas — equivalente ao _normalize_tipo do Python. */
+function normalizeTipo(s) {
+  if (!s) return '';
+  return s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
+
+/** Formata Date para DD/MM/YYYY usando UTC. */
+function fmtDate(d) {
+  if (!(d instanceof Date)) return typeof d === 'string' ? d : '';
+  const dd   = String(d.getUTCDate()).padStart(2, '0');
+  const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+/** Formata Date para DDMMYYYY (sem separadores) usando UTC. */
+function fmtDateNoDash(d) {
+  if (!(d instanceof Date)) return '';
+  const dd   = String(d.getUTCDate()).padStart(2, '0');
+  const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  return `${dd}${mm}${yyyy}`;
+}
+
+/** Chave de comparação estável para datas — YYYY-MM-DD string. */
+function dateKey(d) {
+  if (!(d instanceof Date)) return '';
+  const yyyy = d.getUTCFullYear();
+  const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** Title case simples (equivalente ao str.title() do Python). */
+function toTitleCase(str) {
+  return str.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
+}
+
+/** Normaliza nome de emissor/banco. */
+function normalizeBanco(emissor) {
+  if (typeof emissor !== 'string') return '';
+  const key = emissor.trim().toUpperCase();
+  if (key in BANCO_NORMALIZE) return BANCO_NORMALIZE[key];
+  const nome = emissor.trim().replace(SUFIXO_RE, '').trim();
+  return toTitleCase(nome);
+}
+
+/** Interpreta string de taxa → {indexador, percent, taxaPre}. */
+function parseTaxa(taxaStr) {
+  const nul = {indexador: null, percent: null, taxaPre: null};
+  if (typeof taxaStr !== 'string') return nul;
+  const t = taxaStr.trim();
+  let m;
+
+  m = t.match(/^IPCA\s*\+\s*([\d,]+)%/i);
+  if (m) return {indexador: 'ipca', percent: 100, taxaPre: parseFloat(m[1].replace(',', '.'))};
+
+  m = t.match(/^CDI\s*\+\s*([\d,]+)%/i);
+  if (m) return {indexador: 'cdi', percent: 100, taxaPre: parseFloat(m[1].replace(',', '.'))};
+
+  if (/^CDI$/i.test(t)) return {indexador: 'cdi', percent: 100, taxaPre: null};
+
+  m = t.match(/^([\d,]+)%\s+do\s+CDI/i);
+  if (m) return {indexador: 'cdi', percent: parseFloat(m[1].replace(',', '.')), taxaPre: null};
+
+  m = t.match(/^([\d,]+)%\s+a\.a\./i);
+  if (m) return {indexador: 'PRE', percent: null, taxaPre: parseFloat(m[1].replace(',', '.'))};
+
+  return nul;
+}
+
+/** Formata taxa para campo ativo (col B) nos Bancários. */
+function formatTaxaAtivo(taxaStr) {
+  if (typeof taxaStr !== 'string') return '';
+  const t = taxaStr.trim();
+  let m;
+
+  m = t.match(/^IPCA\s*\+\s*([\d,]+)%/i);
+  if (m) return `IPCA+${m[1]}%`;
+
+  m = t.match(/^CDI\s*\+\s*([\d,]+)%/i);
+  if (m) return `CDI+${m[1]}%`;
+
+  m = t.match(/^([\d,]+)%\s+do\s+CDI/i);
+  if (m) {
+    const val = parseFloat(m[1].replace(',', '.'));
+    const pct = val === Math.floor(val) ? String(Math.floor(val)) : String(val).replace('.', ',');
+    return `${pct}% CDI`;
+  }
+
+  m = t.match(/^([\d,]+%\s+a\.a\.)/i);
+  if (m) return m[1];
+
+  return t;
+}
+
+/** Formata taxa para campo apelido (col AB). */
+function formatTaxaApelido(taxaStr) {
+  if (typeof taxaStr !== 'string') return '';
+  const t = taxaStr.trim();
+  let m;
+
+  m = t.match(/^IPCA\s*\+\s*([\d,]+)%/i);
+  if (m) return `IPCA+${m[1]}%`;
+
+  m = t.match(/^CDI\s*\+\s*([\d,]+)%/i);
+  if (m) return `CDI+${m[1]}%`;
+
+  m = t.match(/^([\d,]+)%\s+do\s+CDI/i);
+  if (m) {
+    const val = parseFloat(m[1].replace(',', '.'));
+    const pct = val === Math.floor(val) ? String(Math.floor(val)) : String(val).replace('.', ',');
+    return `${pct}% CDI`;
+  }
+
+  m = t.match(/^([\d,]+)%\s+a\.a\./i);
+  if (m) return `${m[1]}%`;
+
+  return t;
+}
+
+/** Tipo de ativo para Bancários. */
+function tipoAtivoRF(tipoExtrato) {
+  const mapa = {CDB: 'cdb', LCI: 'lci', LIG: 'lci', LCA: 'lca',
+                LF: 'lf', LFSN: 'lf', LFSC: 'lf'};
+  return mapa[tipoExtrato.toUpperCase()] || tipoExtrato.toLowerCase();
+}
+
+/** Cria linha de saída zerada (28 colunas). */
+function newRow() {
+  return new Array(28).fill(null);
+}
+
+/** Preenche campos comuns em todas as linhas. */
+function setCommonFields(row, nomePortfolio) {
+  row[COL.CV]                     = 'C';
+  row[COL.alt_caixa]              = 0;
+  row[COL.instituicao_financeira] = 'BTG Pactual';
+  row[COL.nome_portfolio]         = nomePortfolio;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  FUNÇÕES DE LEITURA DO EXTRATO
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Varre seção "Posições" da aba Renda Fixa.
+ * Retorna Map: ativo_code → {tipo, emissor, vencimento, taxaStr, liquidez}
+ */
+function scanPosicoes(ws, tiposAlvo) {
+  const posicoes = new Map();
+  let tipoAtual = null;
+  let hdr = null;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    // Cabeçalho de seção: "Posição > LCA", "Posição > CRA", "Posição > Debênture" etc.
+    let m = valB.match(/Posi[çc][ãa]o\s*>\s*(.+)/i);
+    if (m) {
+      tipoAtual = normalizeTipo(m[1].trim());
+      hdr = null;
+      continue;
+    }
+
+    // Início de seção seguinte → resetar tipo
+    if (['Posições Detalhadas', 'Movimentações', 'Posição Consolidada Por Emissor']
+          .includes(valB.trim())) {
+      tipoAtual = null;
+      hdr = null;
+      continue;
+    }
+
+    if (!tiposAlvo.has(tipoAtual)) continue;
+
+    // Detectar linha de cabeçalho dinamicamente
+    if (hdr === null) {
+      if (valB.trim() === 'Emissor') { hdr = rfHdrMap(ws, r); }
+      continue;
+    }
+
+    if (valB.trim() === 'Total') continue;
+
+    const colAt = rfCol(hdr, 'Ativo')                         ?? 3;
+    const colVc = rfCol(hdr, 'Vencimento')                    ?? 5;
+    const colTx = rfCol(hdr, 'Taxa Média Ponderada', 'Taxa')  ?? 9;
+    const colLq = rfCol(hdr, 'Liquidez')                      ?? 6;
+
+    const ativoCode = cellVal(ws, r, colAt);
+    if (typeof ativoCode !== 'string') continue;
+
+    posicoes.set(ativoCode, {
+      tipo:       tipoAtual,
+      emissor:    valB,
+      vencimento: cellVal(ws, r, colVc),
+      taxaStr:    cellVal(ws, r, colTx),
+      liquidez:   cellVal(ws, r, colLq),
+    });
+  }
+  return posicoes;
+}
+
+/**
+ * Varre seção "Posições Detalhadas" da aba Renda Fixa.
+ * Retorna array de objetos com campos de cada lote.
+ */
+function scanDetalhadas(ws, tiposAlvo) {
+  const detalhes = [];
+  let inDet = false;
+  let tipoAtual = null;
+  let hdr = null;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    if (valB.trim() === 'Posições Detalhadas') { inDet = true; continue; }
+    if (!inDet) continue;
+    if (['Movimentações', 'Posição Consolidada Por Emissor'].includes(valB.trim())) break;
+
+    // Sub-seção: "Detalhamento > CRA | BTG COMMODITIES" etc.
+    let m = valB.match(/Detalhamento\s*>\s*(\w+)\s*\|/i);
+    if (m) {
+      tipoAtual = normalizeTipo(m[1]);
+      hdr = null;
+      continue;
+    }
+
+    if (!tiposAlvo.has(tipoAtual)) continue;
+
+    // Detectar linha de cabeçalho dinamicamente
+    if (hdr === null) {
+      if (valB.trim() === 'Ativo') { hdr = rfHdrMap(ws, r); }
+      continue;
+    }
+
+    if (valB.trim() === 'Total') continue;
+
+    const ativoCode = cellVal(ws, r, 2);
+    if (typeof ativoCode !== 'string') continue;
+
+    const colVc = rfCol(hdr, 'Vencimento')                              ?? 4;
+    const colAq = rfCol(hdr, 'Aquisição', 'Aquisicao')                  ?? 5;
+    const colTx = rfCol(hdr, 'Taxa Compra')                             ?? 9;
+    const colQt = rfCol(hdr, 'Quantidade', 'Quant.')                    ?? 10;
+    const colPc = rfCol(hdr, 'Preço Compra R$', 'Preco Compra R$')      ?? 11;
+    const colVl = rfCol(hdr, 'Valor Compra R$')                         ?? 12;
+
+    detalhes.push({
+      tipo:        tipoAtual,
+      ativoCode:   ativoCode,
+      vencimento:  cellVal(ws, r, colVc),
+      aquisicao:   cellVal(ws, r, colAq),
+      taxaCompra:  cellVal(ws, r, colTx),
+      quantidade:  cellVal(ws, r, colQt),
+      precoCompra: cellVal(ws, r, colPc),
+      valorCompra: cellVal(ws, r, colVl),
+    });
+  }
+  return detalhes;
+}
+
+/**
+ * Varre seção "Posições" da aba Renda Fixa para Títulos Públicos.
+ * Retorna Map: "TIPO|YYYY-MM-DD" → {tipo, emissao, vencimento, taxaStr}
+ */
+function scanPosicoesToitulos(ws) {
+  const posicoes = new Map();
+  let tipoAtual = null;
+  let hdr = null;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    let m = valB.match(/Posi[çc][ãa]o\s*>\s*(.+)/i);
+    if (m) {
+      const t = normalizeTipo(m[1].trim());
+      tipoAtual = TITULO_TIPOS_ALVO.has(t) ? t : null;
+      hdr = null;
+      continue;
+    }
+
+    if (['Posições Detalhadas', 'Movimentações', 'Posição Consolidada Por Emissor']
+          .includes(valB.trim())) {
+      tipoAtual = null;
+      hdr = null;
+      continue;
+    }
+
+    if (!tipoAtual) continue;
+
+    // Detectar linha de cabeçalho dinamicamente
+    if (hdr === null) {
+      if (valB.trim() === 'Emissor') { hdr = rfHdrMap(ws, r); }
+      continue;
+    }
+
+    if (valB.trim() === 'Total') continue;
+
+    const colAt = rfCol(hdr, 'Ativo')                          ?? 3;
+    const colEm = rfCol(hdr, 'Emissão', 'Emissao')             ?? 4;
+    const colVc = rfCol(hdr, 'Vencimento')                     ?? 5;
+    const colTx = rfCol(hdr, 'Taxa Média Ponderada', 'Taxa')   ?? 9;
+
+    const tipoCol    = cellVal(ws, r, colAt);
+    const emissao    = cellVal(ws, r, colEm);
+    const vencimento = cellVal(ws, r, colVc);
+    const taxaStr    = cellVal(ws, r, colTx);
+
+    if (typeof tipoCol !== 'string') continue;
+    const tipoKey = normalizeTipo(tipoCol);
+    if (!TITULO_TIPOS_ALVO.has(tipoKey)) continue;
+    if (!(emissao instanceof Date)) continue;
+
+    const key = `${tipoKey}|${dateKey(emissao)}`;
+    posicoes.set(key, {tipo: tipoKey, emissao, vencimento, taxaStr});
+  }
+  return posicoes;
+}
+
+/**
+ * Varre seção "Posições Detalhadas" da aba Renda Fixa para Títulos Públicos.
+ * Captura col C = Emissão (necessário para o matching por chave composta).
+ */
+function scanDetalhadasTitulos(ws) {
+  const detalhes = [];
+  let inDet = false;
+  let tipoAtual = null;
+  let hdr = null;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    if (valB.trim() === 'Posições Detalhadas') { inDet = true; continue; }
+    if (!inDet) continue;
+    if (['Movimentações', 'Posição Consolidada Por Emissor'].includes(valB.trim())) break;
+
+    let m = valB.match(/Detalhamento\s*>\s*(\w+)\s*\|/i);
+    if (m) {
+      const t = normalizeTipo(m[1]);
+      tipoAtual = TITULO_TIPOS_ALVO.has(t) ? t : null;
+      hdr = null;
+      continue;
+    }
+
+    if (!tipoAtual) continue;
+
+    // Detectar linha de cabeçalho dinamicamente
+    if (hdr === null) {
+      if (valB.trim() === 'Ativo') { hdr = rfHdrMap(ws, r); }
+      continue;
+    }
+
+    if (valB.trim() === 'Total') continue;
+
+    const colEm = rfCol(hdr, 'Emissão', 'Emissao')             ?? 3;
+    const colVc = rfCol(hdr, 'Vencimento')                     ?? 4;
+    const colAq = rfCol(hdr, 'Aquisição', 'Aquisicao')          ?? 5;
+    const colTx = rfCol(hdr, 'Taxa Compra')                    ?? 9;
+    const colQt = rfCol(hdr, 'Quantidade', 'Quant.')           ?? 10;
+    const colPc = rfCol(hdr, 'Preço Compra R$', 'Preco Compra R$') ?? 11;
+
+    const emissao = cellVal(ws, r, colEm);
+    if (!(emissao instanceof Date)) continue;
+
+    detalhes.push({
+      tipo:        tipoAtual,
+      emissao:     emissao,
+      vencimento:  cellVal(ws, r, colVc),
+      aquisicao:   cellVal(ws, r, colAq),
+      taxaCompra:  cellVal(ws, r, colTx),
+      quantidade:  cellVal(ws, r, colQt),
+      precoCompra: cellVal(ws, r, colPc),
+    });
+  }
+  return detalhes;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 1 — FUNDOS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarFundos(ws, nomePortfolio, dataInput, outputRows) {
+  const maxRow = getMaxRow(ws);
+  let row = 9;
+  let n = 0;
+
+  while (row <= maxRow) {
+    const cellB = cellVal(ws, row, 2);
+
+    if (typeof cellB === 'string') {
+      const m = CNPJ_RE.exec(cellB);
+      if (m) {
+        const cnpj    = m[0];
+        const dataRow = row + 1;
+        const qtd     = cellVal(ws, dataRow, 4);
+        const nomeProx= cellVal(ws, dataRow, 2);
+
+        if (typeof nomeProx === 'string' && nomeProx.includes('Total')) {
+          row++;
+          continue;
+        }
+        if (qtd === null || qtd === undefined) { row += 2; continue; }
+
+        const r = newRow();
+        setCommonFields(r, nomePortfolio);
+        r[COL.ativo]           = cnpj;
+        r[COL.tipo_ativo]      = 'fundo';
+        r[COL.data_operacao]   = dataInput;
+        r[COL.data_cotizacao]  = dataInput;
+        r[COL.data_liquidacao] = dataInput;
+        r[COL.quantidade]      = qtd;
+        outputRows.push(r);
+        n++;
+        row += 2;
+        continue;
+      }
+
+      if (['Detalhamento', 'Rentabilidade', 'Movimentações'].some(s => cellB.includes(s))) break;
+    }
+    row++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 2 — BANCÁRIOS  (LCI, LCA, CDB, LF, LFSN, LFSC, LIG)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarBancarios(ws, nomePortfolio, outputRows) {
+  const posicoes = scanPosicoes(ws, RF_TIPOS_ALVO);
+  const detalhes = scanDetalhadas(ws, RF_TIPOS_ALVO);
+  let n = 0;
+
+  for (const det of detalhes) {
+    const pos = posicoes.get(det.ativoCode);
+    if (!pos) continue;
+
+    const tipoExt    = det.tipo;
+    const tipoImp    = tipoAtivoRF(tipoExt);
+    const banco      = normalizeBanco(pos.emissor);
+    const taxaStr    = pos.taxaStr;
+    const vencimento = det.vencimento;
+    const aquisicao  = det.aquisicao;
+    const valorComp  = det.valorCompra;
+
+    const {indexador, percent, taxaPre} = parseTaxa(taxaStr);
+    const taxaFmt    = formatTaxaAtivo(taxaStr);
+    const vencStr    = fmtDate(vencimento);
+    const ativoNome  = `${tipoExt} ${banco} ${vencStr} ${taxaFmt}`.trim();
+
+    const liqSim   = typeof pos.liquidez === 'string' && pos.liquidez.trim().toLowerCase() === 'sim';
+    const flagLiq  = liqSim ? 1 : 0;
+    const tempoLiq = liqSim ? 0 : null;
+    const flagTrib = (tipoImp === 'cdb' || tipoImp === 'lf') ? 3 :
+                     (tipoImp === 'lci' || tipoImp === 'lca') ? 0 : null;
+    const grossUp  = (tipoImp === 'lci' || tipoImp === 'lca') ? 117.6471 : null;
+
+    const row = newRow();
+    setCommonFields(row, nomePortfolio);
+    row[COL.ativo]          = ativoNome;
+    row[COL.tipo_ativo]     = tipoImp;
+    row[COL.banco]          = banco;
+    row[COL.flag_liquidez]  = flagLiq;
+    if (flagTrib !== null)   row[COL.flag_tribut]    = flagTrib;
+    if (indexador)           row[COL.indexador]      = indexador;
+    if (percent !== null)    row[COL.percent]        = percent;
+    if (taxaPre !== null)    row[COL.taxa_pre]       = taxaPre;
+    if (grossUp !== null)    row[COL.gross_up]       = grossUp;
+    if (tempoLiq !== null)   row[COL.tempo_liquidez] = tempoLiq;
+    if (valorComp !== null)  row[COL.total_bruto]    = valorComp;
+    row[COL.data_operacao]   = aquisicao;
+    row[COL.data_liquidacao] = aquisicao;
+    row[COL.data_vencimento] = vencimento;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 3 — CRA / CRI / CDCA
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarCraCriCdca(ws, nomePortfolio, outputRows) {
+  const posicoes = scanPosicoes(ws, CRA_TIPOS_ALVO);
+  const detalhes = scanDetalhadas(ws, CRA_TIPOS_ALVO);
+  let n = 0;
+
+  for (const det of detalhes) {
+    const pos = posicoes.get(det.ativoCode);
+    if (!pos) continue;
+
+    const tipoExt    = det.tipo;
+    const tipoImp    = tipoExt === 'CRI' ? 'cri' : 'cra';
+    const banco      = normalizeBanco(pos.emissor);
+    const taxaStrPos = pos.taxaStr;
+    const taxaStrDet = det.taxaCompra;
+    const vencimento = pos.vencimento;
+    const aquisicao  = det.aquisicao;
+
+    // Código CETIP: remove prefixo até o primeiro "-"
+    const rawCode = det.ativoCode;
+    const cetipId = rawCode.includes('-') ? rawCode.split('-').slice(1).join('-') : rawCode;
+    const ativoCell= `CETIP_${cetipId}`;
+
+    const {indexador, percent, taxaPre} = parseTaxa(taxaStrPos);
+    const vencStr     = fmtDate(vencimento);
+    const taxaApelido = formatTaxaApelido(taxaStrDet);
+    const apelidoNome = `${tipoExt} ${banco} ${vencStr} ${cetipId} ${taxaApelido}`.trim();
+
+    const row = newRow();
+    setCommonFields(row, nomePortfolio);
+    row[COL.ativo]          = ativoCell;
+    row[COL.tipo_ativo]     = tipoImp;
+    row[COL.flag_tribut]    = 0;
+    row[COL.marcacao]       = 'curva';
+    row[COL.gross_up]       = 117.6471;
+    row[COL.apelido]        = apelidoNome;
+    if (det.quantidade !== null)  row[COL.quantidade]      = det.quantidade;
+    if (det.precoCompra !== null) row[COL.preco_unitario]  = det.precoCompra;
+    if (indexador)               row[COL.indexador]       = indexador;
+    if (percent !== null)        row[COL.percent]         = percent;
+    if (taxaPre !== null)        row[COL.taxa_pre]        = taxaPre;
+    row[COL.data_operacao]   = aquisicao;
+    row[COL.data_liquidacao] = aquisicao;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 4 — DEBÊNTURES
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarDebentures(ws, nomePortfolio, outputRows) {
+  const posicoes = scanPosicoes(ws, DEB_TIPOS_ALVO);
+  const detalhes = scanDetalhadas(ws, DEB_TIPOS_ALVO);
+  let n = 0;
+
+  for (const det of detalhes) {
+    const pos = posicoes.get(det.ativoCode);
+    if (!pos) continue;
+
+    const banco      = normalizeBanco(pos.emissor);
+    const taxaStrDet = det.taxaCompra;
+    const vencimento = pos.vencimento;
+    const aquisicao  = det.aquisicao;
+
+    const rawCode = det.ativoCode;
+    const code    = rawCode.includes('-') ? rawCode.split('-').slice(1).join('-') : rawCode;
+
+    // Indexador e percent da taxa do lote; taxa_cupom_pre também da taxa do lote
+    const {indexador, percent, taxaPre: taxaCupom} = parseTaxa(taxaStrDet);
+    const vencStr     = fmtDate(vencimento);
+    const taxaApelido = formatTaxaApelido(taxaStrDet);
+    const apelidoNome = `Debenture ${banco} ${vencStr} ${code} ${taxaApelido}`.trim();
+
+    const row = newRow();
+    setCommonFields(row, nomePortfolio);
+    row[COL.ativo]         = code;
+    row[COL.tipo_ativo]    = 'debenture';
+    row[COL.flag_tribut]   = 0;
+    row[COL.marcacao]      = 'curva';
+    row[COL.gross_up]      = 117.6471;
+    row[COL.apelido]       = apelidoNome;
+    if (det.quantidade !== null)  row[COL.quantidade]      = det.quantidade;
+    if (det.precoCompra !== null) row[COL.preco_unitario]  = det.precoCompra;
+    if (indexador)               row[COL.indexador]       = indexador;
+    if (percent !== null)        row[COL.percent]         = percent;
+    if (taxaCupom !== null)      row[COL.taxa_cupom_pre]  = taxaCupom;
+    row[COL.data_operacao]   = aquisicao;
+    row[COL.data_liquidacao] = aquisicao;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 5 — TÍTULOS PÚBLICOS  (NTNB, LFT, LTN, NTNF)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarTitulosPublicos(ws, nomePortfolio, outputRows) {
+  const posicoes = scanPosicoesToitulos(ws);
+  const detalhes = scanDetalhadasTitulos(ws);
+  let n = 0;
+
+  for (const det of detalhes) {
+    const key = `${det.tipo}|${dateKey(det.emissao)}`;
+    const pos = posicoes.get(key);
+    if (!pos) continue;
+
+    const tipo       = det.tipo;
+    const emissao    = det.emissao;
+    const vencimento = det.vencimento;
+    const aquisicao  = det.aquisicao;
+    const taxaStrPos = pos.taxaStr;
+    const taxaStrDet = det.taxaCompra;
+
+    const ativoCell  = `${tipo}_${fmtDateNoDash(emissao)}_${fmtDateNoDash(vencimento)}`;
+    const vencStr    = fmtDate(vencimento);
+    const taxaApelido= formatTaxaApelido(taxaStrDet);
+    const apelidoNome= `${tipo} ${vencStr} ${taxaApelido}`.trim();
+
+    const {indexador, percent, taxaPre} = parseTaxa(taxaStrPos);
+
+    const row = newRow();
+    setCommonFields(row, nomePortfolio);
+    row[COL.ativo]         = ativoCell;
+    row[COL.tipo_ativo]    = 'titulo';
+    row[COL.marcacao]      = 'curva';
+    row[COL.apelido]       = apelidoNome;
+    if (det.quantidade !== null)  row[COL.quantidade]     = det.quantidade;
+    if (det.precoCompra !== null) row[COL.preco_unitario] = det.precoCompra;
+    if (indexador)               row[COL.indexador]      = indexador;
+    if (percent !== null)        row[COL.percent]        = percent;
+    if (taxaPre !== null)        row[COL.taxa_pre]       = taxaPre;
+    row[COL.data_operacao]   = aquisicao;
+    row[COL.data_liquidacao] = aquisicao;
+    row[COL.data_vencimento] = vencimento;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 6 — PREVIDÊNCIA INDIVIDUAL  (VGBL / PGBL)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarPrevidencia(ws, nomePortfolio, dataInput, outputRows) {
+  let inPosicoes = false;
+  let tipoAtual  = null;
+  let n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+
+    if (typeof valB === 'string' && valB.trim() === 'Posições') {
+      inPosicoes = true;
+      continue;
+    }
+    if (!inPosicoes) continue;
+
+    if (typeof valB === 'string' &&
+        ['Rentabilidade', 'Posições abertas por alíquota'].includes(valB.trim())) break;
+
+    if (typeof valB === 'string') {
+      const m = valB.match(/Posi[çc][ãa]o\s*>\s*\S+\/(VGBL|PGBL)/i);
+      if (m) { tipoAtual = m[1].toLowerCase(); continue; }
+    }
+
+    if (!tipoAtual) continue;
+    if (typeof valB === 'string' && ['Fundo', 'Total'].includes(valB.trim())) continue;
+
+    const cnpj = cellVal(ws, r, 3);
+    const qtd  = cellVal(ws, r, 5);
+
+    if (typeof cnpj !== 'string' || !CNPJ_RE.test(cnpj)) continue;
+    if (qtd === null || qtd === undefined) continue;
+
+    const row = newRow();
+    setCommonFields(row, nomePortfolio);
+    row[COL.ativo]           = cnpj;
+    row[COL.tipo_ativo]      = tipoAtual;
+    row[COL.flag_tribut]     = 1;
+    row[COL.quantidade]      = qtd;
+    row[COL.data_operacao]   = dataInput;
+    row[COL.data_cotizacao]  = dataInput;
+    row[COL.data_liquidacao] = dataInput;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 7 — RENDA VARIÁVEL  (Ações e Fundos Imobiliários)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const RV_POSICAO_RE    = /^Posi[çc][ãa]o\s*>\s*(A[çc][õo]es|BDR|Fundos\s+imobili[áa]rios)/i;
+const RV_MOVIMENT_RE   = /^Movimenta[çc][ãa]o/i;
+
+function processarRendaVariavel(ws, nomePortfolio, dataInput, outputRows) {
+  let inPosicao = false;
+  let n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    const strip = valB.trim();
+
+    if (RV_POSICAO_RE.test(strip))  { inPosicao = true;  continue; }
+    if (RV_MOVIMENT_RE.test(strip)) { inPosicao = false; continue; }
+    if (!inPosicao) continue;
+
+    if (strip === 'Código' || strip.startsWith('Total')) continue;
+
+    const qtd = cellVal(ws, r, 4);
+    if (typeof qtd !== 'number') continue;
+
+    const row = newRow();
+    setCommonFields(row, nomePortfolio);
+    row[COL.ativo]            = strip;
+    row[COL.tipo_ativo]       = 'acao';
+    row[COL.quantidade]       = qtd;
+    row[COL.custo_transacao]  = 0;
+    row[COL.data_operacao]    = dataInput;
+    row[COL.data_liquidacao]  = dataInput;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 8 — CRIPTOATIVOS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarCripto(ws, nomePortfolio, dataInput, outputRows) {
+  let inPosicao = false;
+  let n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    const strip = valB.trim();
+
+    if (/^Posi[çc][ãa]o/i.test(strip))    { inPosicao = true;  continue; }
+    if (/^Movimenta[çc][ãa]o/i.test(strip)) break;
+    if (!inPosicao) continue;
+
+    if (strip.startsWith('Total') || ['Ativo', 'Criptoativo'].includes(strip)) continue;
+
+    const mapeamento = CRIPTO_MAP[strip];
+    if (!mapeamento) continue;
+
+    const qtd = cellVal(ws, r, 3);
+    if (qtd === null || qtd === undefined) continue;
+
+    const [ativoImp, apelidoImp] = mapeamento;
+    const row = newRow();
+    setCommonFields(row, nomePortfolio);
+    row[COL.ativo]           = ativoImp;
+    row[COL.tipo_ativo]      = 'generico';
+    row[COL.quantidade]      = qtd;
+    row[COL.flag_liquidez]   = 5;
+    row[COL.apelido]         = apelidoImp;
+    row[COL.data_operacao]   = dataInput;
+    row[COL.data_liquidacao] = dataInput;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 9 — COE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarCoe(ws, nomePortfolio, dataInput, outputRows) {
+  let inPosicoes = false;
+  let n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    const strip = valB.trim();
+
+    if (strip === 'Posições')                                              { inPosicoes = true; continue; }
+    if (['Posições Detalhadas', 'Movimentações'].includes(strip))         break;
+    if (!inPosicoes) continue;
+    if (/^Posi[çc][ãa]o\s*>/i.test(strip))                               continue;
+    if (['Descrição', 'Total'].includes(strip))                           continue;
+
+    const vencimento = cellVal(ws, r, 4);
+    if (!(vencimento instanceof Date)) continue;
+
+    const qtd   = cellVal(ws, r, 7);
+    const preco = cellVal(ws, r, 10);
+
+    if (qtd === null || qtd === undefined) continue;
+
+    const vencNodash  = fmtDateNoDash(vencimento);
+    const ativoCell   = `COE_${vencNodash}_${nomePortfolio}`;
+    const apelidoCell = `COE BTG ${fmtDate(vencimento)}`;
+
+    const row = newRow();
+    setCommonFields(row, nomePortfolio);
+    row[COL.ativo]           = ativoCell;
+    row[COL.tipo_ativo]      = 'generico';
+    row[COL.flag_tribut]     = 1;
+    row[COL.apelido]         = apelidoCell;
+    if (qtd !== null)   row[COL.quantidade]      = qtd;
+    if (preco !== null) row[COL.preco_unitario]  = preco;
+    row[COL.data_operacao]   = dataInput;
+    row[COL.data_liquidacao] = dataInput;
+    row[COL.data_vencimento] = vencimento;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  HELPERS DE VERIFICAÇÃO DE ABAS / SEÇÕES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Verifica se a aba Fundos possui a seção "Carteira Administrada" */
+function temCarteiraAdministrada(ws) {
+  const maxRow = getMaxRow(ws);
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+    if (typeof b === 'string' && /carteira\s+administrada/i.test(b)) return true;
+  }
+  return false;
+}
+
+/** Verifica se a aba Renda Fixa possui a seção "Compromissadas" (posição) */
+function temCompromissadasPos(ws) {
+  const maxRow = getMaxRow(ws);
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+    if (typeof b === 'string' && /^compromissadas?$/i.test(b.trim())) return true;
+  }
+  return false;
+}
+
+/** Verifica se a aba Renda Fixa possui "Movimentação > Compromissada" */
+function temMovCompromissada(ws) {
+  const maxRow = getMaxRow(ws);
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+    if (typeof b === 'string' && /Movimenta[çc][ãa]o\s*>\s*Compromissada/i.test(b)) return true;
+  }
+  return false;
+}
+
+/** Verifica se a seção "Movimentação > Portfólio de CriptoAtivos" tem ativo desconhecido */
+function temCriptoDesconhecidoMov(ws) {
+  const maxRow = getMaxRow(ws);
+  let inMovCripto = false;
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+    if (typeof b !== 'string') continue;
+    const strip = b.trim();
+    if (/Movimenta[çc][ãa]o\s*>\s*Portf[oó]lio\s+de\s+Cripto/i.test(strip)) { inMovCripto = true; continue; }
+    if (inMovCripto && /^(Movimenta[çc][ãa]o|Posi[çc][ãa]o)/i.test(strip) && !/Portf[oó]lio\s+de\s+Cripto/i.test(strip)) { inMovCripto = false; continue; }
+    if (!inMovCripto) continue;
+    if (!strip || strip.startsWith('Total') || ['Ativo', 'Criptoativo', 'Data', 'Transação'].includes(strip)) continue;
+    if (!(strip in CRIPTO_MAP)) return true;
+  }
+  return false;
+}
+
+/** Verifica se a aba CriptoAtivos possui algum ativo desconhecido (fora do CRIPTO_MAP) */
+function temCriptoDesconhecido(ws) {
+  const maxRow = getMaxRow(ws);
+  let inPosicao = false;
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+    if (typeof b !== 'string') continue;
+    const strip = b.trim();
+    if (/^Posi[çc][ãa]o/i.test(strip)) { inPosicao = true; continue; }
+    if (/^Movimenta[çc][ãa]o/i.test(strip)) { inPosicao = false; continue; }
+    if (!inPosicao) continue;
+    if (!strip || strip.startsWith('Total') || ['Ativo', 'Criptoativo'].includes(strip)) continue;
+    if (!(strip in CRIPTO_MAP)) return true;
+  }
+  return false;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  AGENTE PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function runAgent(wb, nomePortfolio, dataInput) {
+  const names = wb.SheetNames;
+  const outputRows = [];
+  const log = [];
+  const avisos = [];
+
+  // Helper: executa um passo com try/catch
+  function passo(label, fn) {
+    try {
+      fn();
+    } catch (err) {
+      const msg = `Movimentação não identificada - verificar e lançar manualmente (${label}: ${err.message})`;
+      avisos.push(msg);
+      log.push(`${label}: ⚠ ERRO — ${err.message}`);
+      console.error(`[${label}]`, err);
+    }
+  }
+
+  let n;
+
+  // Passo 1 — Fundos (opcional)
+  if (names.includes('Fundos')) {
+    passo('Passo 1 - Fundos', () => {
+      n = processarFundos(wb.Sheets['Fundos'], nomePortfolio, dataInput, outputRows);
+      log.push(`Passo 1 - Fundos:           ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 1 - Fundos:           (aba não encontrada, ignorado)`);
+  }
+
+  // Passos 2-5 — Renda Fixa (opcional)
+  if (names.includes('Renda Fixa')) {
+    passo('Passo 2 - Bancários', () => {
+      n = processarBancarios(wb.Sheets['Renda Fixa'], nomePortfolio, outputRows);
+      log.push(`Passo 2 - Bancários:        ${n} linha(s)`);
+    });
+    passo('Passo 3 - CRA/CRI/CDCA', () => {
+      n = processarCraCriCdca(wb.Sheets['Renda Fixa'], nomePortfolio, outputRows);
+      log.push(`Passo 3 - CRA/CRI/CDCA:     ${n} linha(s)`);
+    });
+    passo('Passo 4 - Debêntures', () => {
+      n = processarDebentures(wb.Sheets['Renda Fixa'], nomePortfolio, outputRows);
+      log.push(`Passo 4 - Debêntures:       ${n} linha(s)`);
+    });
+    passo('Passo 5 - Títulos Públicos', () => {
+      n = processarTitulosPublicos(wb.Sheets['Renda Fixa'], nomePortfolio, outputRows);
+      log.push(`Passo 5 - Títulos Públicos: ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passos 2-5 - Renda Fixa:    (aba não encontrada, ignorado)`);
+  }
+
+  // Passo 6 — Previdência (opcional)
+  if (names.includes('Previdência Individual')) {
+    passo('Passo 6 - Previdência', () => {
+      n = processarPrevidencia(wb.Sheets['Previdência Individual'], nomePortfolio, dataInput, outputRows);
+      log.push(`Passo 6 - Previdência:      ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 6 - Previdência:      (aba não encontrada, ignorado)`);
+  }
+
+  // Passo 7 — Renda Variável (opcional)
+  if (names.includes('Renda Variavel')) {
+    passo('Passo 7 - Renda Variável', () => {
+      n = processarRendaVariavel(wb.Sheets['Renda Variavel'], nomePortfolio, dataInput, outputRows);
+      log.push(`Passo 7 - Renda Variável:   ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 7 - Renda Variável:   (aba não encontrada, ignorado)`);
+  }
+
+  // Passo 8 — CriptoAtivos (opcional)
+  if (names.includes('CriptoAtivos')) {
+    passo('Passo 8 - CriptoAtivos', () => {
+      n = processarCripto(wb.Sheets['CriptoAtivos'], nomePortfolio, dataInput, outputRows);
+      log.push(`Passo 8 - CriptoAtivos:     ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 8 - CriptoAtivos:     (aba não encontrada, ignorado)`);
+  }
+
+  // Passo 9 — COE (opcional)
+  if (names.includes('COE')) {
+    passo('Passo 9 - COE', () => {
+      n = processarCoe(wb.Sheets['COE'], nomePortfolio, dataInput, outputRows);
+      log.push(`Passo 9 - COE:              ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 9 - COE:              (aba não encontrada, ignorado)`);
+  }
+
+  log.push(`\nTotal: ${outputRows.length} linha(s) gerada(s)`);
+
+  // ── Verificações de avisos por aba ──
+  if (names.includes('COE')) {
+    avisos.push('Posição em COE - criar ativo manualmente');
+  }
+  if (names.includes('Produtos Estruturados')) {
+    avisos.push('Posição em estruturados - verificar e lançar manualmente');
+  }
+  if (names.includes('Opções Flexíveis')) {
+    avisos.push('Posição em opções - verificar e lançar manualmente');
+  }
+  const criptoAbaPos = names.find(s => /cripto\s*ativos/i.test(s));
+  if (criptoAbaPos && temCriptoDesconhecido(wb.Sheets[criptoAbaPos])) {
+    avisos.push('Posição em Cripto - verificar e lançar manualmente');
+  }
+  if (names.includes('Fundos') && temCarteiraAdministrada(wb.Sheets['Fundos'])) {
+    avisos.push('Posição em carteira administrada - verificar e lançar manualmente');
+  }
+  if (names.includes('Renda Fixa') && temCompromissadasPos(wb.Sheets['Renda Fixa'])) {
+    avisos.push('Posição em compromissadas - verificar e lançar manualmente');
+  }
+  if (names.includes('Swap')) {
+    avisos.push('Posição em swap - verificar e lançar manualmente');
+  }
+
+  if (avisos.length) {
+    log.push('\nAvisos:\n' + avisos.map(a => '  ⚠ ' + a).join('\n'));
+  }
+  console.log('=== Agente ComDinheiro ===\n' + log.join('\n'));
+
+  return {outputRows, avisos};
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  AGENTE 2 — MOVIMENTAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Conjuntos de tipos para cada passo de movimentação
+const RF_TIPOS_ALVO_MOV  = new Set(["LCI","LCA","CDB","LF","LFSN","LFSC","LIG"]);
+const RF_TIPOS_CREDITO   = new Set(["CRA","CRI","CDCA"]);
+const RF_TIPO_DEBENTURE  = new Set(["DEBENTURE"]);
+const RF_TIPOS_TITULOS_M = new Set(["NTNB","LFT","LTN","NTNF"]);
+const RV_MOV_TIPOS_ALVO  = new Set(["ACOES","BDR","FUNDOS IMOBILIARIOS"]);
+
+/** Interpreta valor como Date (aceita Date object ou string "YYYY-MM-DD…"). */
+function parseDate(v) {
+  if (v instanceof Date) return v;
+  if (typeof v === 'string') {
+    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  }
+  return null;
+}
+
+/** CV para Fundos: APLICAÇÃO→C, RESGATE TOTAL→VTT, RESGATE IR REF.→CC, RESGATE REF.→V */
+function cvFundos(transacao) {
+  if (typeof transacao !== 'string') return null;
+  const t = transacao.trim().toUpperCase();
+  if (t === 'APLICAÇÃO' || t === 'APLICACAO') return 'C';
+  if (t === 'RESGATE TOTAL') return 'VTT';
+  if (t.startsWith('RESGATE IR REF.')) return 'CC';
+  if (t.startsWith('RESGATE REF.')) return 'V';
+  return null;
+}
+
+/** CV para RF (Bancários / CRA-CRI / Debêntures): COMPRA→C, VENDA/REVENDA→V */
+function cvRfMov(transacao) {
+  if (typeof transacao !== 'string') return null;
+  const t = transacao.trim().toUpperCase();
+  if ((t === 'COMPRA' || t === 'COMPRA DEFINITIVA') && !t.includes('REVENDA')) return 'C';
+  if (t.includes('VENDA') || t.includes('REVENDA')) return 'V';
+  return null;
+}
+
+/** CV para Títulos Públicos: contém COMPRA→C, contém VENDA/REVENDA→V */
+function cvTitulo(transacao) {
+  if (typeof transacao !== 'string') return null;
+  const t = transacao.trim().toUpperCase();
+  if (t.includes('COMPRA')) return 'C';
+  if (t.includes('VENDA') || t.includes('REVENDA')) return 'V';
+  return null;
+}
+
+/** CV para Previdência: Saída Total→VTT, Saída→V, Entrada→C */
+function cvPrev(transacao) {
+  if (typeof transacao !== 'string') return null;
+  const t = transacao.trim();
+  if (/sa[íi]da\s+total/i.test(t)) return 'VTT';
+  if (/sa[íi]da/i.test(t)) return 'V';
+  if (/entrada/i.test(t)) return 'C';
+  return null;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 1 — FUNDOS (Movimentação)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Varre aba Fundos antes de "Movimentações" para construir mapa:
+ *   nome_curto → CNPJ
+ */
+function scanFundosCnpj(ws) {
+  const cnpjMap = new Map();
+  const maxRow  = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB === 'string' && valB.trim() === 'Movimentações') break;
+    if (typeof valB !== 'string') continue;
+
+    const m = CNPJ_RE.exec(valB);
+    if (!m) continue;
+    const cnpj = m[0];
+
+    let nome = valB;
+    for (const prefix of ['Detalhamento > ', 'Posição > ', 'Posições > ']) {
+      if (nome.startsWith(prefix)) { nome = nome.slice(prefix.length); break; }
+    }
+    if (nome.includes(' - Classe CNPJ:')) nome = nome.split(' - Classe CNPJ:')[0].trim();
+    else if (nome.includes(' - Fundo CNPJ:')) nome = nome.split(' - Fundo CNPJ:')[0].trim();
+    else if (nome.includes(' CNPJ:')) nome = nome.split(' CNPJ:')[0].trim();
+    else nome = nome.replace(cnpj, '').replace(/^\s*[-,]+|[-,]+\s*$/g, '').trim();
+
+    if (nome) cnpjMap.set(nome, cnpj);
+  }
+  return cnpjMap;
+}
+
+function processarFundosMov(ws, nomePortfolio, outputRows) {
+  const cnpjMap = scanFundosCnpj(ws);
+  let inMov = false, cnpjAtual = null, n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+
+    if (typeof valB === 'string') {
+      if (valB.trim() === 'Movimentações') { inMov = true; continue; }
+      if (!inMov) continue;
+      const m = valB.match(/Movimenta[çc][ãa]o\s*>\s*(.+)/i);
+      if (m) { cnpjAtual = cnpjMap.get(m[1].trim()) || null; continue; }
+      if (valB.trim() === 'Data' || valB.trim().startsWith('Total')) continue;
+    }
+
+    if (!inMov) continue;
+    const data = parseDate(valB);
+    if (!data || cnpjAtual === null) continue;
+
+    const transacao  = cellVal(ws, r, 3);
+    const quantidade = cellVal(ws, r, 4);
+    const cv = cvFundos(transacao);
+    if (cv === null || quantidade === null) continue;
+
+    const row = newRow();
+    row[COL.nome_portfolio]         = nomePortfolio;
+    row[COL.alt_caixa]              = 0;
+    row[COL.instituicao_financeira] = 'BTG Pactual';
+    row[COL.ativo]           = cnpjAtual;
+    row[COL.tipo_ativo]      = 'fundo';
+    row[COL.CV]              = cv;
+    row[COL.quantidade]      = quantidade;
+    row[COL.data_operacao]   = data;
+    row[COL.data_cotizacao]  = data;
+    row[COL.data_liquidacao] = data;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  FUNÇÕES COMPARTILHADAS — RENDA FIXA (Movimentação)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Varre seção "Posições" da aba Renda Fixa para movimentação.
+ * Detecção dinâmica de colunas pelo cabeçalho.
+ */
+function scanPosicoesRfMov(ws, tiposAlvo) {
+  const posicoes = new Map();
+  let tipoAtual = null;
+  let hdr = null;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    const m = valB.match(/Posi[çc][ãa]o\s*>\s*(.+)/i);
+    if (m) { tipoAtual = normalizeTipo(m[1].trim()); hdr = null; continue; }
+
+    if (['Posições Detalhadas','Movimentações','Posição Consolidada Por Emissor']
+          .includes(valB.trim())) { tipoAtual = null; hdr = null; continue; }
+
+    if (!tiposAlvo.has(tipoAtual)) continue;
+
+    // Detectar linha de cabeçalho dinamicamente
+    if (hdr === null) {
+      if (valB.trim() === 'Emissor') { hdr = rfHdrMap(ws, r); }
+      continue;
+    }
+
+    if (valB.trim() === 'Total') continue;
+
+    const colAt = rfCol(hdr, 'Ativo')                          ?? 3;
+    const colVc = rfCol(hdr, 'Vencimento')                     ?? 5;
+    const colTx = rfCol(hdr, 'Taxa Média Ponderada', 'Taxa')   ?? 9;
+    const colLq = rfCol(hdr, 'Liquidez')                       ?? 6;
+
+    const ativoCode = cellVal(ws, r, colAt);
+    if (typeof ativoCode !== 'string') continue;
+
+    posicoes.set(ativoCode, {
+      tipo:       tipoAtual,
+      emissor:    valB,
+      vencimento: cellVal(ws, r, colVc),
+      taxaStr:    cellVal(ws, r, colTx),
+      liquidez:   cellVal(ws, r, colLq),
+    });
+  }
+  return posicoes;
+}
+
+/**
+ * Varre "Posições Detalhadas" da aba Renda Fixa para Títulos Públicos (movimentação).
+ * Detecção dinâmica de colunas pelo cabeçalho.
+ * Retorna Map: "${tipo}|${dateKey(aquisicao)}" → {emissao, vencimento, taxaCompra}
+ */
+function scanPosicoesDetalhadasMov(ws, tiposAlvo) {
+  const posicoes = new Map();
+  let inDet = false;
+  let hdr = null;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+    if (typeof valB !== 'string') continue;
+
+    if (valB.trim() === 'Posições Detalhadas') { inDet = true; continue; }
+    if (['Posição Consolidada Por Emissor','Movimentações'].includes(valB.trim())) {
+      inDet = false; hdr = null; continue;
+    }
+    if (!inDet) continue;
+    if (/^Detalhamento\s*>/i.test(valB)) { hdr = null; continue; }
+
+    // Detectar linha de cabeçalho dinamicamente
+    if (hdr === null) {
+      if (valB.trim() === 'Ativo') { hdr = rfHdrMap(ws, r); }
+      continue;
+    }
+
+    if (valB.trim() === 'Total') continue;
+
+    const tipo = normalizeTipo(valB.trim());
+    if (!tiposAlvo.has(tipo)) continue;
+
+    const colEm = rfCol(hdr, 'Emissão', 'Emissao')      ?? 3;
+    const colVc = rfCol(hdr, 'Vencimento')               ?? 4;
+    const colAq = rfCol(hdr, 'Aquisição', 'Aquisicao')   ?? 5;
+    const colTx = rfCol(hdr, 'Taxa Compra')              ?? 9;
+
+    const emissaoRaw   = cellVal(ws, r, colEm);
+    const vencRaw      = cellVal(ws, r, colVc);
+    const aquisicaoRaw = cellVal(ws, r, colAq);
+    const taxaCompra   = cellVal(ws, r, colTx);
+
+    const acqDate = parseDate(aquisicaoRaw);
+    if (!acqDate) continue;
+
+    const key = `${tipo}|${dateKey(acqDate)}`;
+    if (!posicoes.has(key)) {
+      posicoes.set(key, {
+        tipo,
+        emissao:    parseDate(emissaoRaw),
+        vencimento: parseDate(vencRaw),
+        taxaCompra,
+      });
+    }
+  }
+  return posicoes;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 2 — BANCÁRIOS  (Movimentação)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarBancariosMov(ws, nomePortfolio, outputRows, avisos) {
+  const posicoes = scanPosicoesRfMov(ws, RF_TIPOS_ALVO_MOV);
+  let inMov = false, tipoAtual = null, n = 0, semPosicaoCnt = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+
+    if (typeof valB === 'string') {
+      if (valB.trim() === 'Movimentações') { inMov = true; continue; }
+      if (!inMov) continue;
+      const m = valB.match(/Movimenta[çc][ãa]o\s*>\s*(\w+)/i);
+      if (m) {
+        const t = normalizeTipo(m[1]);
+        tipoAtual = RF_TIPOS_ALVO_MOV.has(t) ? t : null;
+        continue;
+      }
+      if (/Movimenta[çc][ãa]o\s*>/i.test(valB)) { tipoAtual = null; continue; }
+      if (valB.trim() === 'Data' || valB.trim().startsWith('Total')) continue;
+    }
+
+    if (!inMov) continue;
+    const data = parseDate(valB);
+    if (!data || tipoAtual === null) continue;
+
+    const emissorAtivo = cellVal(ws, r, 3);
+    const transacao    = cellVal(ws, r, 4);
+    const quantidade   = cellVal(ws, r, 5);
+    const preco        = cellVal(ws, r, 6);
+
+    const cv = cvRfMov(transacao);
+    if (cv === null || typeof emissorAtivo !== 'string') continue;
+
+    const isCompra  = cv === 'C';
+    const ativoCode = emissorAtivo.includes(' / ')
+                      ? emissorAtivo.split(' / ', 2)[1].trim()
+                      : emissorAtivo.trim();
+    const pos     = posicoes.get(ativoCode);
+    const tipoImp = tipoAtivoRF(tipoAtual);
+
+    let ativoNome, banco, vencimento, taxaStr, liquidez;
+    if (pos) {
+      banco      = normalizeBanco(pos.emissor);
+      vencimento = parseDate(pos.vencimento);
+      taxaStr    = pos.taxaStr;
+      liquidez   = pos.liquidez;
+      const vencStr  = fmtDate(vencimento);
+      const taxaFmt  = formatTaxaAtivo(taxaStr);
+      ativoNome = `${tipoAtual} ${banco} ${vencStr} ${taxaFmt}`.trim();
+    } else if (!isCompra) {
+      ativoNome = null;
+      vencimento = null; taxaStr = null; liquidez = null;
+      semPosicaoCnt++;
+    } else {
+      const bancoRaw = emissorAtivo.includes(' / ')
+                       ? emissorAtivo.split(' / ', 2)[0].trim() : '';
+      banco     = normalizeBanco(bancoRaw);
+      ativoNome = `${tipoAtual} ${banco}`.trim();
+      vencimento = null; taxaStr = null; liquidez = null;
+    }
+
+    const row = newRow();
+    row[COL.nome_portfolio] = nomePortfolio;
+    row[COL.alt_caixa]      = 0;
+    row[COL.ativo]          = ativoNome;
+    row[COL.tipo_ativo]     = tipoImp;
+    row[COL.CV]             = cv;
+    if (typeof quantidade === 'number') row[COL.quantidade]     = quantidade;
+    if (typeof preco === 'number')      row[COL.preco_unitario] = preco;
+    row[COL.data_operacao]   = data;
+    row[COL.data_liquidacao] = data;
+
+    if (isCompra) {
+      row[COL.instituicao_financeira] = 'BTG Pactual';
+      if (pos) {
+        const liqSim = typeof liquidez === 'string' && liquidez.trim().toLowerCase() === 'sim';
+        row[COL.flag_liquidez]  = liqSim ? 1 : 0;
+        if (liqSim) row[COL.tempo_liquidez] = 0;
+        if (vencimento) row[COL.data_vencimento] = vencimento;
+        row[COL.banco] = banco;
+      }
+      row[COL.flag_tribut] = (tipoImp === 'cdb' || tipoImp === 'lf') ? 3 : 0;
+      if (tipoImp === 'lci' || tipoImp === 'lca') row[COL.gross_up] = 117.6471;
+      if (taxaStr) {
+        const {indexador, percent, taxaPre} = parseTaxa(taxaStr);
+        if (indexador)        row[COL.indexador] = indexador;
+        if (percent !== null) row[COL.percent]   = percent;
+        if (taxaPre !== null) row[COL.taxa_pre]  = taxaPre;
+      }
+    }
+    outputRows.push(row);
+    n++;
+  }
+  if (semPosicaoCnt > 0 && avisos) {
+    avisos.push('Ativo bancário vendido não identificado - verificar e lançar manualmente');
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 3 — CRA / CRI / CDCA  (Movimentação)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarCreditoMov(ws, nomePortfolio, outputRows) {
+  const posicoes = scanPosicoesRfMov(ws, RF_TIPOS_CREDITO);
+  let inMov = false, tipoAtual = null, n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+
+    if (typeof valB === 'string') {
+      if (valB.trim() === 'Movimentações') { inMov = true; continue; }
+      if (!inMov) continue;
+      const m = valB.match(/Movimenta[çc][ãa]o\s*>\s*(\w+)/i);
+      if (m) {
+        const t = normalizeTipo(m[1]);
+        tipoAtual = RF_TIPOS_CREDITO.has(t) ? t : null;
+        continue;
+      }
+      if (/Movimenta[çc][ãa]o\s*>/i.test(valB)) { tipoAtual = null; continue; }
+      if (valB.trim() === 'Data' || valB.trim().startsWith('Total')) continue;
+    }
+
+    if (!inMov) continue;
+    const data = parseDate(valB);
+    if (!data || tipoAtual === null) continue;
+
+    const emissorAtivo = cellVal(ws, r, 3);
+    const transacao    = cellVal(ws, r, 4);
+    const quantidade   = cellVal(ws, r, 5);
+    const preco        = cellVal(ws, r, 6);
+
+    const cv = cvRfMov(transacao);
+    if (cv === null || typeof emissorAtivo !== 'string') continue;
+
+    const isCompra  = cv === 'C';
+    const ativoCode = emissorAtivo.includes(' / ')
+                      ? emissorAtivo.split(' / ', 2)[1].trim()
+                      : emissorAtivo.trim();
+    const ativoNome = ativoCode.replace(/^(CRI|CRA|CDCA)-/i, 'CETIP_');
+    const tipoImp   = tipoAtivoRF(tipoAtual);
+
+    const row = newRow();
+    row[COL.nome_portfolio] = nomePortfolio;
+    row[COL.alt_caixa]      = 0;
+    row[COL.ativo]          = ativoNome;
+    row[COL.tipo_ativo]     = tipoImp;
+    row[COL.CV]             = cv;
+    if (typeof quantidade === 'number') row[COL.quantidade]     = quantidade;
+    if (typeof preco === 'number')      row[COL.preco_unitario] = preco;
+    row[COL.data_operacao]   = data;
+    row[COL.data_liquidacao] = data;
+
+    if (isCompra) {
+      row[COL.instituicao_financeira] = 'BTG Pactual';
+      row[COL.flag_tribut] = 0;
+      row[COL.marcacao]    = 'curva';
+      row[COL.gross_up]    = 117.6471;
+      const pos = posicoes.get(ativoCode);
+      if (pos && pos.taxaStr) {
+        const {indexador, percent, taxaPre} = parseTaxa(pos.taxaStr);
+        if (indexador)        row[COL.indexador] = indexador;
+        if (percent !== null) row[COL.percent]   = percent;
+        if (taxaPre !== null) row[COL.taxa_pre]  = taxaPre;
+        // Apelido
+        const cetipId = ativoCode.replace(/^(?:CRI|CRA|CDCA)-/i, '');
+        const banco   = normalizeBanco(pos.emissor);
+        const vencStr = fmtDate(parseDate(pos.vencimento));
+        const txApel  = formatTaxaApelido(pos.taxaStr);
+        row[COL.apelido] = `${tipoImp.toUpperCase()} ${banco} ${vencStr} ${cetipId} ${txApel}`.trim();
+      }
+    }
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 4 — DEBÊNTURES  (Movimentação)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarDebentureMov(ws, nomePortfolio, outputRows) {
+  const posicoes = scanPosicoesRfMov(ws, RF_TIPO_DEBENTURE);
+  let inMov = false, tipoAtual = null, n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+
+    if (typeof valB === 'string') {
+      if (valB.trim() === 'Movimentações') { inMov = true; continue; }
+      if (!inMov) continue;
+      const m = valB.match(/Movimenta[çc][ãa]o\s*>\s*(.+)/i);
+      if (m) {
+        const t = normalizeTipo(m[1].trim());
+        tipoAtual = RF_TIPO_DEBENTURE.has(t) ? t : null;
+        continue;
+      }
+      if (/Movimenta[çc][ãa]o\s*>/i.test(valB)) { tipoAtual = null; continue; }
+      if (valB.trim() === 'Data' || valB.trim().startsWith('Total')) continue;
+    }
+
+    if (!inMov) continue;
+    const data = parseDate(valB);
+    if (!data || tipoAtual === null) continue;
+
+    const emissorAtivo = cellVal(ws, r, 3);
+    const transacao    = cellVal(ws, r, 4);
+    const quantidade   = cellVal(ws, r, 5);
+    const preco        = cellVal(ws, r, 6);
+
+    const cv = cvRfMov(transacao);
+    if (cv === null || typeof emissorAtivo !== 'string') continue;
+
+    const isCompra  = cv === 'C';
+    const ativoCode = emissorAtivo.includes(' / ')
+                      ? emissorAtivo.split(' / ', 2)[1].trim()
+                      : emissorAtivo.trim();
+    const ativoNome = ativoCode.replace(/^DEB-/i, '');
+
+    const row = newRow();
+    row[COL.nome_portfolio] = nomePortfolio;
+    row[COL.alt_caixa]      = 0;
+    row[COL.ativo]          = ativoNome;
+    row[COL.tipo_ativo]     = 'debenture';
+    row[COL.CV]             = cv;
+    if (typeof quantidade === 'number') row[COL.quantidade]     = quantidade;
+    if (typeof preco === 'number')      row[COL.preco_unitario] = preco;
+    row[COL.data_operacao]   = data;
+    row[COL.data_liquidacao] = data;
+
+    if (isCompra) {
+      row[COL.instituicao_financeira] = 'BTG Pactual';
+      row[COL.flag_tribut] = 0;
+      row[COL.marcacao]    = 'curva';
+      row[COL.gross_up]    = 117.6471;
+      const pos = posicoes.get(ativoCode);
+      if (pos && pos.taxaStr) {
+        const {indexador, percent, taxaPre} = parseTaxa(pos.taxaStr);
+        if (indexador)        row[COL.indexador] = indexador;
+        if (percent !== null) row[COL.percent]   = percent;
+        if (taxaPre !== null) row[COL.taxa_pre]  = taxaPre;
+        // Apelido
+        const cetipId = ativoCode.replace(/^DEB-/i, '');
+        const banco   = normalizeBanco(pos.emissor);
+        const vencStr = fmtDate(parseDate(pos.vencimento));
+        const txApel  = formatTaxaApelido(pos.taxaStr);
+        row[COL.apelido] = `Debenture ${banco} ${vencStr} ${cetipId} ${txApel}`.trim();
+      }
+    }
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 5 — TÍTULOS PÚBLICOS  (Movimentação)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarTitulosMov(ws, nomePortfolio, outputRows) {
+  const posicoesDet = scanPosicoesDetalhadasMov(ws, RF_TIPOS_TITULOS_M);
+  let inMov = false, tipoAtual = null, n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const valB = cellVal(ws, r, 2);
+
+    if (typeof valB === 'string') {
+      if (valB.trim() === 'Movimentações') { inMov = true; continue; }
+      if (!inMov) continue;
+      const m = valB.match(/Movimenta[çc][ãa]o\s*>\s*(\w+)/i);
+      if (m) {
+        const t = normalizeTipo(m[1]);
+        tipoAtual = RF_TIPOS_TITULOS_M.has(t) ? t : null;
+        continue;
+      }
+      if (/Movimenta[çc][ãa]o\s*>/i.test(valB)) { tipoAtual = null; continue; }
+      if (valB.trim() === 'Data' || valB.trim().startsWith('Total')) continue;
+    }
+
+    if (!inMov) continue;
+    const data = parseDate(valB);
+    if (!data || tipoAtual === null) continue;
+
+    const transacao  = cellVal(ws, r, 4);
+    const quantidade = cellVal(ws, r, 5);
+    const preco      = cellVal(ws, r, 6);
+
+    const cv = cvTitulo(transacao);
+    if (cv === null) continue;
+
+    const isCompra = cv === 'C';
+    const key = `${tipoAtual}|${dateKey(data)}`;
+    const pos = posicoesDet.get(key);
+
+    let ativoNome = null, vencimento = null;
+    if (pos && pos.emissao && pos.vencimento) {
+      ativoNome  = `${tipoAtual.toLowerCase()}_${fmtDateNoDash(pos.emissao)}_${fmtDateNoDash(pos.vencimento)}`;
+      vencimento = pos.vencimento;
+    }
+
+    const row = newRow();
+    row[COL.nome_portfolio] = nomePortfolio;
+    row[COL.alt_caixa]      = 0;
+    row[COL.ativo]          = ativoNome;
+    row[COL.tipo_ativo]     = 'titulo';
+    row[COL.CV]             = cv;
+    if (typeof quantidade === 'number') row[COL.quantidade]     = quantidade;
+    if (typeof preco === 'number')      row[COL.preco_unitario] = preco;
+    row[COL.data_operacao]   = data;
+    row[COL.data_liquidacao] = data;
+
+    if (isCompra) {
+      row[COL.instituicao_financeira] = 'BTG Pactual';
+      row[COL.flag_tribut] = 0;
+      row[COL.marcacao]    = 'curva';
+      if (vencimento) row[COL.data_vencimento] = vencimento;
+      if (pos && pos.taxaCompra) {
+        const {indexador, taxaPre} = parseTaxa(pos.taxaCompra);  // percent ignorado
+        if (indexador)        row[COL.indexador] = indexador;
+        if (taxaPre !== null) row[COL.taxa_pre]  = taxaPre;
+      }
+    }
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 6 — PREVIDÊNCIA INDIVIDUAL  (Movimentação)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Varre seção "Posições" da aba Previdência Individual.
+ * Retorna {certTipo: Map<certNum→tipo>, fundoList: [{certNum, nome, cnpj}]}
+ */
+function scanPrevidenciaPosicoes(ws) {
+  const certTipo  = new Map();
+  const fundoList = [];
+  let certAtual   = null;
+  const maxRow    = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+    if (typeof b === 'string' && b.trim() === 'Movimentações') break;
+    if (typeof b !== 'string') continue;
+
+    const m = b.match(/Posi[çc][ãa]o\s*>\s*(\d+)\/(\w+)/i);
+    if (m) {
+      certAtual = m[1].trim();
+      const tipo = m[2].toLowerCase();
+      certTipo.set(certAtual, (tipo === 'vgbl' || tipo === 'pgbl') ? tipo : 'vgbl');
+      continue;
+    }
+    if (certAtual === null) continue;
+
+    const c = cellVal(ws, r, 3);
+    if (typeof c === 'string' && CNPJ_RE.test(c)) {
+      fundoList.push({certNum: certAtual, nome: b.trim(), cnpj: c.trim()});
+    }
+  }
+  return {certTipo, fundoList};
+}
+
+/** Encontra CNPJ pelo maior prefixo comum (fuzzy-match simples). */
+function findCnpjPrev(certNum, movNome, fundoList, threshold = 10) {
+  const candidates = fundoList.filter(f => f.certNum === certNum);
+  if (!candidates.length) return null;
+
+  const movUp = movNome.toUpperCase();
+  let bestLen = -1, bestCnpj = null;
+
+  for (const {nome, cnpj} of candidates) {
+    const nUp = nome.toUpperCase();
+    const len = Math.min(movUp.length, nUp.length);
+    let common = 0;
+    for (let i = 0; i < len; i++) {
+      if (movUp[i] === nUp[i]) common++;
+      else break;
+    }
+    if (common > bestLen) { bestLen = common; bestCnpj = cnpj; }
+  }
+  return bestLen >= threshold ? bestCnpj : null;
+}
+
+function processarPrevidenciaMov(ws, nomePortfolio, outputRows, avisos) {
+  const {certTipo, fundoList} = scanPrevidenciaPosicoes(ws);
+  let inMov = false, certAtual = null, nomeFundoAtual = null, n = 0;
+  let semCnpj = false;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+
+    if (typeof b === 'string') {
+      if (b.trim() === 'Movimentações') { inMov = true; continue; }
+      if (!inMov) continue;
+      if (['Posições abertas por alíquota','Rentabilidade'].includes(b.trim())) break;
+      const m = b.match(/Movimenta[çc][ãa]o\s*>\s*(\d+)\/(.+)/i);
+      if (m) { certAtual = m[1].trim(); nomeFundoAtual = m[2].trim(); continue; }
+      if (b.trim() === 'Data' || b.trim().startsWith('Total')) continue;
+    }
+
+    if (!inMov) continue;
+    const data = parseDate(b);
+    if (!data || certAtual === null || nomeFundoAtual === null) continue;
+
+    const transacao  = cellVal(ws, r, 3);
+    const quantidade = cellVal(ws, r, 4);
+    const preco      = cellVal(ws, r, 5);
+
+    const cv = cvPrev(transacao);
+    if (cv === null) continue;
+
+    const tipoImp = certTipo.get(certAtual) || 'vgbl';
+    const cnpj    = findCnpjPrev(certAtual, nomeFundoAtual, fundoList);
+    if (cnpj === null) semCnpj = true;
+
+    const row = newRow();
+    row[COL.nome_portfolio]         = nomePortfolio;
+    row[COL.alt_caixa]              = 0;
+    row[COL.instituicao_financeira] = 'BTG Pactual';
+    row[COL.ativo]           = cnpj;
+    row[COL.tipo_ativo]      = tipoImp;
+    row[COL.CV]              = cv;
+    if (typeof quantidade === 'number') row[COL.quantidade]     = quantidade;
+    if (typeof preco === 'number')      row[COL.preco_unitario] = preco;
+    row[COL.data_operacao]   = data;
+    row[COL.data_cotizacao]  = data;
+    row[COL.data_liquidacao] = data;
+    outputRows.push(row);
+    n++;
+  }
+  if (semCnpj && avisos) {
+    avisos.push('Movimentação de fundo de previdência não identificado - verificar e lançar manualmente');
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 7 — RENDA VARIÁVEL  (Movimentação — Ações, BDR, FII)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarRendaVariavelMov(ws, nomePortfolio, outputRows) {
+  let inTarget = false, n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+
+    if (typeof b === 'string') {
+      const strip = b.trim();
+      const m = strip.match(/Movimenta[çc][ãa]o\s*>\s*(.+)/i);
+      if (m) {
+        inTarget = RV_MOV_TIPOS_ALVO.has(normalizeTipo(m[1].trim()));
+        continue;
+      }
+      if (strip.startsWith('Total')
+          || /^Posi[çc][ãa]o/i.test(strip)
+          || /^Movimenta[çc][ãa]o\s*$/i.test(strip)) {
+        inTarget = false; continue;
+      }
+      if (strip === 'Data') continue;
+      if (!inTarget) continue;
+    }
+
+    const data = parseDate(b);
+    if (!data || !inTarget) continue;
+
+    const transacao  = cellVal(ws, r, 3);
+    const codigo     = cellVal(ws, r, 4);
+    const quantidade = cellVal(ws, r, 5);
+    const preco      = cellVal(ws, r, 6);
+
+    if (typeof transacao !== 'string') continue;
+    const t = transacao.trim().toUpperCase();
+    let cv;
+    if (t === 'COMPRA') cv = 'C';
+    else if (t === 'VENDA') cv = 'V';
+    else continue;
+
+    const row = newRow();
+    row[COL.nome_portfolio]         = nomePortfolio;
+    row[COL.alt_caixa]              = 0;
+    row[COL.instituicao_financeira] = 'BTG Pactual';
+    row[COL.ativo]                  = codigo;
+    row[COL.tipo_ativo]             = 'acao';
+    row[COL.CV]                     = cv;
+    if (typeof quantidade === 'number') row[COL.quantidade]     = quantidade;
+    if (typeof preco === 'number')      row[COL.preco_unitario] = preco;
+    row[COL.data_operacao]   = data;
+    row[COL.data_cotizacao]  = data;
+    row[COL.data_liquidacao] = data;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 8 — COE  (Movimentação — apenas aviso)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Verifica se há movimentações na aba COE. Retorna true se encontrou, false caso contrário. */
+function verificarCoeMov(ws) {
+  const maxRow = getMaxRow(ws);
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+    if (typeof b === 'string' && /Movimenta[çc][ãa]o\s*>/i.test(b.trim())) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PASSO 9 — CRIPTOATIVOS  (Movimentação)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function processarCriptoMov(ws, nomePortfolio, outputRows) {
+  let inTarget = false, n = 0;
+  const maxRow = getMaxRow(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    const b = cellVal(ws, r, 2);
+
+    if (typeof b === 'string') {
+      const strip = b.trim();
+      if (/Movimenta[çc][ãa]o\s*>\s*Portf[oó]lio\s+de\s+Cripto/i.test(strip)) {
+        inTarget = true; continue;
+      }
+      if (/^(Posi[çc][ãa]o|Movimenta[çc][ãa]o)\b/i.test(strip)
+          && !/Portf[oó]lio/i.test(strip)) {
+        inTarget = false; continue;
+      }
+      if (strip === 'Data' || strip.startsWith('Total')) continue;
+      if (!inTarget) continue;
+      // string while inTarget → try as date below
+    }
+
+    const data = parseDate(b);
+    if (!data || !inTarget) continue;
+
+    const ativoNome = cellVal(ws, r, 3);
+    const descricao = cellVal(ws, r, 4);
+    const quantidade= cellVal(ws, r, 5);
+    const preco     = cellVal(ws, r, 6);
+
+    if (typeof ativoNome !== 'string') continue;
+    const cripto = CRIPTO_MAP[ativoNome.trim()];
+    if (!cripto) continue;
+    const [ativoCod, apelido] = cripto;
+
+    if (typeof descricao !== 'string') continue;
+    const d = descricao.trim().toLowerCase();
+    let cv;
+    if (d === 'compra') cv = 'C';
+    else if (d === 'venda') cv = 'V';
+    else continue;
+
+    const row = newRow();
+    row[COL.nome_portfolio]         = nomePortfolio;
+    row[COL.alt_caixa]              = 0;
+    row[COL.instituicao_financeira] = 'BTG Pactual';
+    row[COL.ativo]                  = ativoCod;
+    row[COL.tipo_ativo]             = 'generico';
+    row[COL.CV]                     = cv;
+    row[COL.apelido]                = apelido;
+    if (typeof quantidade === 'number') row[COL.quantidade]     = quantidade;
+    if (typeof preco === 'number')      row[COL.preco_unitario] = preco;
+    row[COL.data_operacao]   = data;
+    row[COL.data_cotizacao]  = data;
+    row[COL.data_liquidacao] = data;
+    outputRows.push(row);
+    n++;
+  }
+  return n;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ORQUESTRADOR — AGENTE DE MOVIMENTAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+
+function runAgentMov(wb, nomePortfolio) {
+  const names      = wb.SheetNames;
+  const outputRows = [];
+  const log        = [];
+  const avisos     = [];
+  let n;
+
+  // Helper: executa um passo com try/catch
+  function passo(label, fn) {
+    try {
+      fn();
+    } catch (err) {
+      const msg = `Movimentação não identificada - verificar e lançar manualmente (${label}: ${err.message})`;
+      avisos.push(msg);
+      log.push(`${label}: ⚠ ERRO — ${err.message}`);
+      console.error(`[${label}]`, err);
+    }
+  }
+
+  // Passo 1 — Fundos
+  if (names.includes('Fundos')) {
+    passo('Passo 1 - Fundos', () => {
+      n = processarFundosMov(wb.Sheets['Fundos'], nomePortfolio, outputRows);
+      log.push(`Passo 1 - Fundos:           ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 1 - Fundos:           (aba não encontrada)`);
+  }
+
+  // Passos 2-5 — Renda Fixa
+  if (names.includes('Renda Fixa')) {
+    passo('Passo 2 - Bancários', () => {
+      n = processarBancariosMov(wb.Sheets['Renda Fixa'], nomePortfolio, outputRows, avisos);
+      log.push(`Passo 2 - Bancários:        ${n} linha(s)`);
+    });
+    passo('Passo 3 - CRA/CRI/CDCA', () => {
+      n = processarCreditoMov(wb.Sheets['Renda Fixa'], nomePortfolio, outputRows);
+      log.push(`Passo 3 - CRA/CRI/CDCA:     ${n} linha(s)`);
+    });
+    passo('Passo 4 - Debêntures', () => {
+      n = processarDebentureMov(wb.Sheets['Renda Fixa'], nomePortfolio, outputRows);
+      log.push(`Passo 4 - Debêntures:       ${n} linha(s)`);
+    });
+    passo('Passo 5 - Títulos Públicos', () => {
+      n = processarTitulosMov(wb.Sheets['Renda Fixa'], nomePortfolio, outputRows);
+      log.push(`Passo 5 - Títulos Públicos: ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passos 2-5 - Renda Fixa:    (aba não encontrada)`);
+  }
+
+  // Passo 6 — Previdência
+  const prevAba = names.find(s => /previd[êe]ncia\s+individual/i.test(s));
+  if (prevAba) {
+    passo('Passo 6 - Previdência', () => {
+      n = processarPrevidenciaMov(wb.Sheets[prevAba], nomePortfolio, outputRows, avisos);
+      log.push(`Passo 6 - Previdência:      ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 6 - Previdência:      (aba não encontrada)`);
+  }
+
+  // Passo 7 — Renda Variável
+  if (names.includes('Renda Variavel')) {
+    passo('Passo 7 - Renda Variável', () => {
+      n = processarRendaVariavelMov(wb.Sheets['Renda Variavel'], nomePortfolio, outputRows);
+      log.push(`Passo 7 - Renda Variável:   ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 7 - Renda Variável:   (aba não encontrada)`);
+  }
+
+  // Passo 8 — CriptoAtivos
+  const criptoAba = names.find(s => /cripto\s*ativos/i.test(s));
+  if (criptoAba) {
+    passo('Passo 8 - CriptoAtivos', () => {
+      n = processarCriptoMov(wb.Sheets[criptoAba], nomePortfolio, outputRows);
+      log.push(`Passo 8 - CriptoAtivos:     ${n} linha(s)`);
+    });
+  } else {
+    log.push(`Passo 8 - CriptoAtivos:     (aba não encontrada)`);
+  }
+
+  log.push(`\nTotal: ${outputRows.length} linha(s) gerada(s)`);
+
+  // ── Verificações de avisos por aba ──
+  if (names.includes('Swap')) {
+    avisos.push('Posição em swap - verificar movimentações e atualizar preços manualmente');
+  }
+  if (names.includes('COE')) {
+    avisos.push('Posição em COE - verificar movimentações e atualizar preços manualmente');
+  }
+  if (names.includes('Produtos Estruturados')) {
+    avisos.push('Posição em estruturados - verificar movimentações e atualizar preços manualmente');
+  }
+  if (names.includes('Opções Flexíveis')) {
+    avisos.push('Posição em opções - verificar movimentações e atualizar preços manualmente');
+  }
+  if (names.includes('Fundos') && temCarteiraAdministrada(wb.Sheets['Fundos'])) {
+    avisos.push('Posição em carteira administrada - verificar movimentações e atualizar preços manualmente');
+  }
+  if (names.includes('Renda Fixa') && temMovCompromissada(wb.Sheets['Renda Fixa'])) {
+    avisos.push('Movimentação em compromissadas - verificar e lançar manualmente');
+  }
+  if (criptoAba && temCriptoDesconhecidoMov(wb.Sheets[criptoAba])) {
+    avisos.push('Movimentação em Cripto - verificar e lançar manualmente');
+  }
+
+  if (avisos.length) {
+    log.push('\nAvisos:\n' + avisos.map(a => '  ⚠ ' + a).join('\n'));
+  }
+  console.log('=== Agente Movimentação ===\n' + log.join('\n'));
+
+  return {outputRows, avisos};
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CONSTRUÇÃO DO ARQUIVO DE SAÍDA
+// ═══════════════════════════════════════════════════════════════════════════
+
+function buildOutputWorkbook(outputRows) {
+  const ws = {};
+  const nCols = HEADERS.length;
+  const nRows = outputRows.length;
+
+  // Cabeçalho (linha 0)
+  for (let c = 0; c < nCols; c++) {
+    const addr = XLSX.utils.encode_cell({r: 0, c});
+    ws[addr] = {t: 's', v: HEADERS[c]};
+  }
+
+  // Linhas de dados
+  for (let ri = 0; ri < nRows; ri++) {
+    const rowArr = outputRows[ri];
+    for (let c = 0; c < nCols; c++) {
+      const val = rowArr[c];
+      if (val === null || val === undefined) continue;
+
+      const addr = XLSX.utils.encode_cell({r: ri + 1, c});
+      if (val instanceof Date) {
+        // Data → célula de data com formato DD/MM/YYYY
+        ws[addr] = {t: 'd', v: val, z: 'DD/MM/YYYY'};
+      } else if (typeof val === 'number') {
+        ws[addr] = {t: 'n', v: val};
+      } else {
+        ws[addr] = {t: 's', v: String(val)};
+      }
+    }
+  }
+
+  ws['!ref'] = XLSX.utils.encode_range({
+    s: {r: 0, c: 0},
+    e: {r: nRows, c: nCols - 1}
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'comdinheiro');
+  return wb;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INTERFACE DO USUÁRIO
+// ═══════════════════════════════════════════════════════════════════════════
+
+const fileInput      = document.getElementById('fileInput');
+const cardPosicao    = document.getElementById('cardPosicao');
+const modalOverlay1  = document.getElementById('modalOverlay1');
+const modalOverlay2  = document.getElementById('modalOverlay2');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const inputPortfolio = document.getElementById('inputPortfolio');
+const inputData      = document.getElementById('inputData');
+const toast          = document.getElementById('toast');
+
+// ── Utilitários de UI ──
+
+function showToast(msg, type = '', duration = 4000) {
+  toast.textContent = msg;
+  toast.className   = 'show' + (type ? ' ' + type : '');
+  setTimeout(() => { toast.className = ''; }, duration);
+}
+
+function showLoading(msg) {
+  document.getElementById('loadingText').textContent = msg || 'Processando extrato…';
+  loadingOverlay.classList.add('visible');
+}
+
+function hideLoading() {
+  loadingOverlay.classList.remove('visible');
+}
+
+// ── Relatório Modal ──
+
+const modalRelatorio  = document.getElementById('modalRelatorio');
+const relatorioResumo = document.getElementById('relatorioResumo');
+const relatorioLista  = document.getElementById('relatorioLista');
+
+function showRelatorio(avisos, nLinhas, filename) {
+  relatorioResumo.textContent = `${nLinhas} linha(s) gerada(s) — arquivo: ${filename}`;
+  relatorioLista.innerHTML = '';
+  if (avisos.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'relatorio-item ok';
+    li.innerHTML = '<span class="relatorio-item-icon">✅</span><span>Importação concluída - nenhum erro encontrado</span>';
+    relatorioLista.appendChild(li);
+  } else {
+    for (const msg of avisos) {
+      const li = document.createElement('li');
+      li.className = 'relatorio-item warning';
+      li.innerHTML = `<span class="relatorio-item-icon">⚠️</span><span>${msg}</span>`;
+      relatorioLista.appendChild(li);
+    }
+  }
+  modalRelatorio.classList.add('visible');
+}
+
+document.getElementById('btnFecharRelatorio').addEventListener('click', () => {
+  modalRelatorio.classList.remove('visible');
+});
+modalRelatorio.addEventListener('click', e => {
+  if (e.target === modalRelatorio) modalRelatorio.classList.remove('visible');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  AGENTE 1 — IMPORTAR POSIÇÃO (multi-arquivo)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Estado da fila de arquivos
+let queue1   = [];   // Array<File>
+let configs1 = [];   // Array<{file, nome, data}>
+let idx1     = 0;
+
+function todayStr() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+}
+
+function updateModal1Labels() {
+  const total = queue1.length;
+  document.getElementById('modal1Step').textContent =
+    `Arquivo ${idx1 + 1} de ${total} — Passo 1 de 2`;
+  document.getElementById('modal1FileName').textContent = queue1[idx1].name;
+}
+
+function updateModal2Labels() {
+  const total = queue1.length;
+  const isLast = (idx1 === total - 1);
+  document.getElementById('modal2Step').textContent =
+    `Arquivo ${idx1 + 1} de ${total} — Passo 2 de 2`;
+  document.getElementById('modal2FileName').textContent = queue1[idx1].name;
+  document.getElementById('btnProcessar2').textContent =
+    isLast ? 'Processar ⚡' : 'Próximo →';
+}
+
+function openModal1() {
+  updateModal1Labels();
+  inputPortfolio.value = '';
+  modalOverlay2.classList.remove('visible');
+  modalOverlay1.classList.add('visible');
+  setTimeout(() => inputPortfolio.focus(), 300);
+}
+
+function openModal2() {
+  updateModal2Labels();
+  inputData.value = todayStr();
+  modalOverlay1.classList.remove('visible');
+  modalOverlay2.classList.add('visible');
+  setTimeout(() => inputData.focus(), 300);
+}
+
+function cancelAgent1() {
+  modalOverlay1.classList.remove('visible');
+  modalOverlay2.classList.remove('visible');
+  queue1 = []; configs1 = []; idx1 = 0;
+}
+
+async function processarTodosAgent1() {
+  modalOverlay2.classList.remove('visible');
+  showLoading(`Processando ${configs1.length} extrato(s)…`);
+
+  setTimeout(async () => {
+    try {
+      const allRows = [];
+      const allAvisos = [];
+
+      for (const cfg of configs1) {
+        const [yyyy, mm, dd] = cfg.data.split('-').map(Number);
+        const dataInput = new Date(Date.UTC(yyyy, mm - 1, dd));
+        const arrayBuffer = await cfg.file.arrayBuffer();
+        const wb = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array', cellDates: true});
+        const {outputRows, avisos} = runAgent(wb, cfg.nome, dataInput);
+        allRows.push(...outputRows);
+        allAvisos.push(...avisos);
+      }
+
+      const outWb = buildOutputWorkbook(allRows);
+      let filename;
+      if (configs1.length === 1) {
+        const [yyyy, mm, dd] = configs1[0].data.split('-').map(Number);
+        const dateTag = `${String(dd).padStart(2,'0')}${String(mm).padStart(2,'0')}${yyyy}`;
+        filename = `importacao_${configs1[0].nome}_${dateTag}.xlsx`;
+      } else {
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2,'0');
+        const mm = String(today.getMonth()+1).padStart(2,'0');
+        const yyyy = today.getFullYear();
+        filename = `importacao_multipla_${dd}${mm}${yyyy}.xlsx`;
+      }
+      XLSX.writeFile(outWb, filename, {cellDates: true, bookType: 'xlsx'});
+
+      hideLoading();
+      showRelatorio(allAvisos, allRows.length, filename);
+    } catch (err) {
+      hideLoading();
+      console.error(err);
+      showToast(`Erro: ${err.message}`, 'error', 8000);
+    }
+    queue1 = []; configs1 = []; idx1 = 0;
+  }, 50);
+}
+
+// ── Eventos do Card Posição ──
+
+cardPosicao.addEventListener('click', () => {
+  fileInput.value = '';
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files && fileInput.files.length > 0) {
+    queue1 = Array.from(fileInput.files);
+    configs1 = [];
+    idx1 = 0;
+    openModal1();
+  }
+});
+
+document.getElementById('btnCancelar1').addEventListener('click', cancelAgent1);
+modalOverlay1.addEventListener('click', e => { if (e.target === modalOverlay1) cancelAgent1(); });
+modalOverlay2.addEventListener('click', e => { if (e.target === modalOverlay2) cancelAgent1(); });
+
+document.getElementById('btnContinuar1').addEventListener('click', () => {
+  const nome = inputPortfolio.value.trim();
+  if (!nome) {
+    inputPortfolio.style.borderColor = '#c53030';
+    inputPortfolio.focus();
+    setTimeout(() => inputPortfolio.style.borderColor = '', 2000);
+    return;
+  }
+  openModal2();
+});
+inputPortfolio.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btnContinuar1').click();
+});
+
+document.getElementById('btnVoltar2').addEventListener('click', () => {
+  modalOverlay2.classList.remove('visible');
+  updateModal1Labels();
+  modalOverlay1.classList.add('visible');
+  setTimeout(() => inputPortfolio.focus(), 300);
+});
+
+document.getElementById('btnProcessar2').addEventListener('click', () => {
+  const dataStr = inputData.value;
+  if (!dataStr) {
+    showToast('Informe a data de referência.', 'error');
+    return;
+  }
+  // Salvar config do arquivo atual
+  configs1.push({file: queue1[idx1], nome: inputPortfolio.value.trim(), data: dataStr});
+  idx1++;
+
+  if (idx1 < queue1.length) {
+    // Ainda há arquivos → mostrar modal 1 para o próximo
+    openModal1();
+  } else {
+    // Todos configurados → processar
+    processarTodosAgent1();
+  }
+});
+
+inputData.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btnProcessar2').click();
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  AGENTE 2 — IMPORTAR MOVIMENTAÇÕES (multi-arquivo)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const cardMovimentacao  = document.getElementById('cardMovimentacao');
+const fileInputMov      = document.getElementById('fileInputMov');
+const modalOverlayMov   = document.getElementById('modalOverlayMov');
+const inputPortfolioMov = document.getElementById('inputPortfolioMov');
+
+let queueMov   = [];   // Array<File>
+let configsMov = [];   // Array<{file, nome}>
+let idxMov     = 0;
+
+function updateModalMovLabels() {
+  const total = queueMov.length;
+  const isLast = (idxMov === total - 1);
+  document.getElementById('modalMovStep').textContent =
+    `Arquivo ${idxMov + 1} de ${total}`;
+  document.getElementById('modalMovFileName').textContent = queueMov[idxMov].name;
+  document.getElementById('btnProcessarMov').textContent =
+    isLast ? 'Processar ⚡' : 'Próximo →';
+}
+
+function openModalMov() {
+  updateModalMovLabels();
+  inputPortfolioMov.value = '';
+  modalOverlayMov.classList.add('visible');
+  setTimeout(() => inputPortfolioMov.focus(), 300);
+}
+
+function cancelAgentMov() {
+  modalOverlayMov.classList.remove('visible');
+  queueMov = []; configsMov = []; idxMov = 0;
+}
+
+async function processarTodosAgentMov() {
+  modalOverlayMov.classList.remove('visible');
+  showLoading(`Processando ${configsMov.length} extrato(s)…`);
+
+  setTimeout(async () => {
+    try {
+      const allRows  = [];
+      const allAvisos = [];
+
+      for (const cfg of configsMov) {
+        const arrayBuffer = await cfg.file.arrayBuffer();
+        const wb = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array', cellDates: true});
+        const {outputRows, avisos} = runAgentMov(wb, cfg.nome);
+        allRows.push(...outputRows);
+        allAvisos.push(...avisos);
+      }
+
+      const outWb = buildOutputWorkbook(allRows);
+      const today = new Date();
+      const dd    = String(today.getDate()).padStart(2,'0');
+      const mm    = String(today.getMonth()+1).padStart(2,'0');
+      const yyyy  = today.getFullYear();
+      const filename = configsMov.length === 1
+        ? `movimentacao_${configsMov[0].nome}_${dd}${mm}${yyyy}.xlsx`
+        : `movimentacao_multipla_${dd}${mm}${yyyy}.xlsx`;
+
+      XLSX.writeFile(outWb, filename, {cellDates: true, bookType: 'xlsx'});
+
+      hideLoading();
+      showRelatorio(allAvisos, allRows.length, filename);
+    } catch (err) {
+      hideLoading();
+      console.error(err);
+      showToast(`Erro: ${err.message}`, 'error', 8000);
+    }
+    queueMov = []; configsMov = []; idxMov = 0;
+  }, 50);
+}
+
+// ── Eventos do Card Movimentação ──
+
+cardMovimentacao.addEventListener('click', () => {
+  fileInputMov.value = '';
+  fileInputMov.click();
+});
+
+fileInputMov.addEventListener('change', () => {
+  if (fileInputMov.files && fileInputMov.files.length > 0) {
+    queueMov = Array.from(fileInputMov.files);
+    configsMov = [];
+    idxMov = 0;
+    openModalMov();
+  }
+});
+
+document.getElementById('btnCancelarMov').addEventListener('click', cancelAgentMov);
+modalOverlayMov.addEventListener('click', e => { if (e.target === modalOverlayMov) cancelAgentMov(); });
+
+document.getElementById('btnProcessarMov').addEventListener('click', () => {
+  const nome = inputPortfolioMov.value.trim();
+  if (!nome) {
+    inputPortfolioMov.style.borderColor = '#c53030';
+    inputPortfolioMov.focus();
+    setTimeout(() => inputPortfolioMov.style.borderColor = '', 2000);
+    return;
+  }
+  configsMov.push({file: queueMov[idxMov], nome});
+  idxMov++;
+
+  if (idxMov < queueMov.length) {
+    openModalMov();
+  } else {
+    processarTodosAgentMov();
+  }
+});
+
+inputPortfolioMov.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btnProcessarMov').click();
+});
+
+
+</script>
+</body>
+</html>
